@@ -231,8 +231,13 @@ class NPC:
         neighbors = []
         for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
             nx, ny = self.x + dx, self.y + dy
-            if is_walkable(nx, ny) and (nx, ny) != self.prev_pos:
+            if is_walkable(nx, ny):
                 neighbors.append((nx, ny))
+
+        # If no valid neighbors except the previous position, allow backtracking
+        if not neighbors or (len(neighbors) == 1 and neighbors[0] == self.prev_pos):
+            if self.prev_pos:
+                neighbors.append(self.prev_pos)
 
         if neighbors:
             self.prev_pos = (self.x, self.y)
@@ -277,11 +282,11 @@ class NPC:
             self.image = self.get_image()
 
          # Throw trash based on type
-            if random.random() < 0.05:
-                if self.npc_type == "non-educated":
-                    trash_list.append(Trash(self.x, self.y))
-                elif self.npc_type == "normal" and random.random() < 0.5:
-                    trash_list.append(Trash(self.x, self.y))
+        if random.random() < 0.05:
+            if self.npc_type == "non-educated":
+                trash_list.append(Trash(self.x, self.y))
+            elif self.npc_type == "normal" and random.random() < 0.5:
+                trash_list.append(Trash(self.x, self.y))
 
         return True
 
