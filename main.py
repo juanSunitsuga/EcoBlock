@@ -186,7 +186,7 @@ class Bot:
             self.target_y = self.y * TILE_SIZE
             self.moving = True
 
-    def update(self):
+    def update(self, trash_list):
         if self.moving:
             dx = self.target_x - self.pixel_x
             dy = self.target_y - self.pixel_y
@@ -194,6 +194,11 @@ class Bot:
                 self.pixel_x = self.target_x
                 self.pixel_y = self.target_y
                 self.moving = False
+
+                # Check for trash at the current position and remove it
+                for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
+                    if self.x == trash.x and self.y == trash.y:
+                        trash_list.remove(trash)
             else:
                 self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
                 self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
@@ -418,7 +423,7 @@ while running:
         npc.update(trashes)
 
     # Update and draw the player-controlled bot
-    player_bot.update()
+    player_bot.update(trashes)
 
     # Draw the game world
     for y in range(ROWS):
@@ -432,7 +437,7 @@ while running:
         npc.draw()
 
     pygame.display.flip()
-    clock.tick(24)
+    clock.tick(30)
 
 pygame.quit()
 sys.exit()
