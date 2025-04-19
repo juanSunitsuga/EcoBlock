@@ -3,163 +3,77 @@
 
 ## Imports
 import random
-import time
+
+# Constants
+TILE_SIZE = 64
+WIDTH, HEIGHT = 800, 600
+ROWS, COLS = HEIGHT // TILE_SIZE, WIDTH // TILE_SIZE
 
 wall = 'w'
 cell = 'c'
 unvisited = 'u'
 
-## Functions
-def printMaze(maze, height, width):
-	for i in range(0, height):
-		for j in range(0, width):
-			print(' ' if str(maze[i][j]) == 'c' else str(maze[i][j]), end=" ")
-		print('\n')
+# Save the maze to a file
+def save_maze_to_file(maze, filename):
+    with open(filename, 'w') as file:
+        for row in maze:
+            file.write(' '.join(row) + '\n')
 
 # Find number of surrounding cells
 def surroundingCells(maze, rand_wall):
-	s_cells = 0
-	if (maze[rand_wall[0]-1][rand_wall[1]] == 'c'):
-		s_cells += 1
-	if (maze[rand_wall[0]+1][rand_wall[1]] == 'c'):
-		s_cells += 1
-	if (maze[rand_wall[0]][rand_wall[1]-1] == 'c'):
-		s_cells +=1
-	if (maze[rand_wall[0]][rand_wall[1]+1] == 'c'):
-		s_cells += 1
+    s_cells = 0
+    if maze[rand_wall[0] - 1][rand_wall[1]] == cell:
+        s_cells += 1
+    if maze[rand_wall[0] + 1][rand_wall[1]] == cell:
+        s_cells += 1
+    if maze[rand_wall[0]][rand_wall[1] - 1] == cell:
+        s_cells += 1
+    if maze[rand_wall[0]][rand_wall[1] + 1] == cell:
+        s_cells += 1
+    return s_cells
 
-	return s_cells
-
-
-## Main code
-# Init variables
-
+# Maze generation function
 def generateMaze(height, width):
-    global wall, cell, unvisited
-    maze = []
+    maze = [[unvisited for _ in range(width)] for _ in range(height)]
 
-    # Denote all cells as unvisited
-    for i in range(0, height):
-        line = []
-        for j in range(0, width):
-            line.append(unvisited)
-        maze.append(line)
+    # Randomize starting point
+    start_x, start_y = random.randint(1, height - 2), random.randint(1, width - 2)
+    maze[start_x][start_y] = cell
+    walls = [
+        [start_x - 1, start_y],
+        [start_x + 1, start_y],
+        [start_x, start_y - 1],
+        [start_x, start_y + 1]
+    ]
 
-    # Randomize starting point and set it a cell
-    starting_height = int(random.random() * height)
-    starting_width = int(random.random() * width)
-    if starting_height == 0:
-        starting_height += 1
-    if starting_height == height - 1:
-        starting_height -= 1
-    if starting_width == 0:
-        starting_width += 1
-    if starting_width == width - 1:
-        starting_width -= 1
-
-    # Mark it as cell and add surrounding walls to the list
-    maze[starting_height][starting_width] = wall  # Now 'wall' represents grass
-    walls = []
-    walls.append([starting_height - 1, starting_width])
-    walls.append([starting_height, starting_width - 1])
-    walls.append([starting_height, starting_width + 1])
-    walls.append([starting_height + 1, starting_width])
-
-    # Denote walls in maze
-    maze[starting_height - 1][starting_width] = cell  # Now 'cell' represents bricks
-    maze[starting_height][starting_width - 1] = cell
-    maze[starting_height][starting_width + 1] = cell
-    maze[starting_height + 1][starting_width] = cell
+    for wall_pos in walls:
+        maze[wall_pos[0]][wall_pos[1]] = wall
 
     while walls:
-        # Pick a random wall
-        rand_wall = walls[int(random.random() * len(walls)) - 1]
+        rand_wall = random.choice(walls)
+        walls.remove(rand_wall)
 
-        # Check if it is a left wall
-        if rand_wall[1] != 0:
-            if maze[rand_wall[0]][rand_wall[1] - 1] == 'u' and maze[rand_wall[0]][rand_wall[1] + 1] == wall:
-                # Find the number of surrounding cells
-                s_cells = surroundingCells(maze, rand_wall)
+        x, y = rand_wall
+        if maze[x][y] == wall:
+            neighbors = [
+                (x - 1, y),
+                (x + 1, y),
+                (x, y - 1),
+                (x, y + 1)
+            ]
+            cells = [n for n in neighbors if 0 <= n[0] < height and 0 <= n[1] < width and maze[n[0]][n[1]] == cell]
 
-                if s_cells < 2:
-                    # Denote the new path
-                    maze[rand_wall[0]][rand_wall[1]] = wall
-
-                    # Mark the new walls
-                    # Upper cell
-                    if rand_wall[0] != 0:
-                        if maze[rand_wall[0] - 1][rand_wall[1]] != wall:
-                            maze[rand_wall[0] - 1][rand_wall[1]] = cell
-                        if [rand_wall[0] - 1, rand_wall[1]] not in walls:
-                            walls.append([rand_wall[0] - 1, rand_wall[1]])
-
-                    # Bottom cell
-                    if rand_wall[0] != height - 1:
-                        if maze[rand_wall[0] + 1][rand_wall[1]] != wall:
-                            maze[rand_wall[0] + 1][rand_wall[1]] = cell
-                        if [rand_wall[0] + 1, rand_wall[1]] not in walls:
-                            walls.append([rand_wall[0] + 1, rand_wall[1]])
-
-                    # Leftmost cell
-                    if rand_wall[1] != 0:
-                        if maze[rand_wall[0]][rand_wall[1] - 1] != wall:
-                            maze[rand_wall[0]][rand_wall[1] - 1] = cell
-                        if [rand_wall[0], rand_wall[1] - 1] not in walls:
-                            walls.append([rand_wall[0], rand_wall[1] - 1])
-
-                # Delete wall
-                for wall in walls:
-                    if wall[0] == rand_wall[0] and wall[1] == rand_wall[1]:
-                        walls.remove(wall)
-
-                continue
-
-        # Check if it is an upper wall
-        if rand_wall[0] != 0:
-            if maze[rand_wall[0] - 1][rand_wall[1]] == 'u' and maze[rand_wall[0] + 1][rand_wall[1]] == wall:
-                s_cells = surroundingCells(maze, rand_wall)
-                if s_cells < 2:
-                    # Denote the new path
-                    maze[rand_wall[0]][rand_wall[1]] = wall
-
-                    # Mark the new walls
-                    # Upper cell
-                    if rand_wall[0] != 0:
-                        if maze[rand_wall[0] - 1][rand_wall[1]] != wall:
-                            maze[rand_wall[0] - 1][rand_wall[1]] = cell
-                        if [rand_wall[0] - 1, rand_wall[1]] not in walls:
-                            walls.append([rand_wall[0] - 1, rand_wall[1]])
-
-                    # Leftmost cell
-                    if rand_wall[1] != 0:
-                        if maze[rand_wall[0]][rand_wall[1] - 1] != wall:
-                            maze[rand_wall[0]][rand_wall[1] - 1] = cell
-                        if [rand_wall[0], rand_wall[1] - 1] not in walls:
-                            walls.append([rand_wall[0], rand_wall[1] - 1])
-
-                    # Rightmost cell
-                    if rand_wall[1] != width - 1:
-                        if maze[rand_wall[0]][rand_wall[1] + 1] != wall:
-                            maze[rand_wall[0]][rand_wall[1] + 1] = cell
-                        if [rand_wall[0], rand_wall[1] + 1] not in walls:
-                            walls.append([rand_wall[0], rand_wall[1] + 1])
-
-                # Delete wall
-                for wall in walls:
-                    if wall[0] == rand_wall[0] and wall[1] == rand_wall[1]:
-                        walls.remove(wall)
-
-                continue
-
-        # Delete the wall from the list anyway
-        for wall in walls:
-            if wall[0] == rand_wall[0] and wall[1] == rand_wall[1]:
-                walls.remove(wall)
-
-    # Mark the remaining unvisited cells as walls
-    for i in range(0, height):
-        for j in range(0, width):
-            if maze[i][j] == 'u':
-                maze[i][j] = cell
+            if len(cells) == 1:
+                maze[x][y] = cell
+                for n in neighbors:
+                    if 0 <= n[0] < height and 0 <= n[1] < width and maze[n[0]][n[1]] == unvisited:
+                        maze[n[0]][n[1]] = wall
+                        walls.append(n)
 
     return maze
+
+# Main execution
+if __name__ == "__main__":
+    maze = generateMaze(ROWS, COLS)
+    save_maze_to_file(maze, "maze.txt")  # Save the maze to a file
+    print("Maze saved to maze.txt")
