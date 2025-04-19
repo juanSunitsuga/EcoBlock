@@ -36,6 +36,7 @@ trash_images = [
 # NPC types
 npc_imgs = {
     "educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "educated-npc.png"), (TILE_SIZE, TILE_SIZE)),
+    "normal": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "normal-npc.png"), (TILE_SIZE, TILE_SIZE)),
     "normal": {
         "walk": {
             "north": [
@@ -116,6 +117,7 @@ class Bot:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+        self.prev_pos = None
         self.pixel_x = x * TILE_SIZE
         self.pixel_y = y * TILE_SIZE
         self.target_x = self.pixel_x
@@ -129,7 +131,7 @@ class Bot:
             return
 
         neighbors = []
-        for dx, dy in [(0,1), (1,0), (0,-1), (-1,0)]:
+        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
             nx, ny = self.x + dx, self.y + dy
             if 0 <= nx < COLS and 0 <= ny < ROWS:
                 if tile_map[ny][nx] == "sidewalk" and (nx, ny) != self.prev_pos:
@@ -152,9 +154,15 @@ class Bot:
 
             self.prev_pos = (self.x, self.y)
             self.x, self.y = next_x, next_y
+
+            if trash_list and self.x == target.x and self.y == target.y:
+                trash_list.remove(target)
+
             self.target_x = self.x * TILE_SIZE
             self.target_y = self.y * TILE_SIZE
             self.moving = True
+
+        return True
 
     def update(self, trash_list):
         if self.moving:
@@ -177,8 +185,9 @@ class Bot:
 
 class NPC:
     def __init__(self, x, y, npc_type):
-        self.x = x
-        self.y = y
+        self.x, self.y = x, y
+        self.npc_type = npc_type
+        self.image = npc_imgs[npc_type]
         self.pixel_x = x * TILE_SIZE
         self.pixel_y = y * TILE_SIZE
         self.target_x = self.pixel_x
@@ -208,7 +217,7 @@ class NPC:
             return (0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] == "sidewalk")
 
         neighbors = []
-        for dx, dy in [(0,1), (1,0), (0,-1), (-1,0)]:
+        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
             nx, ny = self.x + dx, self.y + dy
             if is_walkable(nx, ny) and (nx, ny) != self.prev_pos:
                 neighbors.append((nx, ny))
@@ -255,12 +264,14 @@ class NPC:
         elif self.npc_type == "normal":
             self.image = self.get_image()
 
+        return True
+
     def draw(self):
         screen.blit(self.image, (self.pixel_x, self.pixel_y))
 
 # Game state
 trashes = []
-bots = [Bot(0, 0)]
+bots = [Bot(1, 1)]
 npcs = []
 
 def generate_npc():
@@ -317,3 +328,4 @@ while running:
 
 pygame.quit()
 sys.exit()
+# End of the code
