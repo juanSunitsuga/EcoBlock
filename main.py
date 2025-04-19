@@ -1,21 +1,23 @@
-# -- existing imports and initializations --
 import pygame
 import sys
 import random
 from MazeGenerator import generateMaze  # Import the generateMaze function
 
+# Initialize Pygame
 pygame.init()
 
 # Screen settings
-WIDTH, HEIGHT = 832, 640
+WIDTH, HEIGHT = 800, 600
 TILE_SIZE = 64
 ROWS, COLS = HEIGHT // TILE_SIZE, WIDTH // TILE_SIZE
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("EcoBlock Simulator")
 
+# Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
+# Asset path
 ASSETS_PATH = "assets/"
 
 # Load images
@@ -25,6 +27,7 @@ house_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "house.png"),
 bin_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "trash-bin.png"), (TILE_SIZE, TILE_SIZE))
 bot_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "trash-bot.png"), (TILE_SIZE, TILE_SIZE))
 
+# Trash images
 trash_images = [
     pygame.transform.scale(pygame.image.load(ASSETS_PATH + "plastic-bottle.png"), (TILE_SIZE, TILE_SIZE)),
     pygame.transform.scale(pygame.image.load(ASSETS_PATH + "plastic.png"), (TILE_SIZE, TILE_SIZE)),
@@ -35,69 +38,12 @@ trash_images = [
 
 # NPC types
 npc_imgs = {
-    "educated": {
-        "walk": {
-            "north": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/North 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/North 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ],
-            "south": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/South 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/South 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ],
-            "east": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/East 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/East 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ],
-            "west": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/West 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/West 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ]
-        }
-    },
-    "normal": {
-        "walk": {
-            "north": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/North 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/North 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ],
-            "south": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/South 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/South 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ],
-            "east": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/East 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/East 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ],
-            "west": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/West 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/West 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ]
-        }
-    },
-    "non-educated": {
-        "walk": {
-            "north": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/North 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/North 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ],
-            "south": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/South 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/South 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ],
-            "east": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/East 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/East 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ],
-            "west": [
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/West 1.png"), (TILE_SIZE, TILE_SIZE)),
-                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/West 2.png"), (TILE_SIZE, TILE_SIZE)),
-            ]
-        }
-    }
+    "educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "educated-npc.png"), (TILE_SIZE, TILE_SIZE)),
+    "normal": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "normal-npc.png"), (TILE_SIZE, TILE_SIZE)),
+    "non-educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "non-educated-npc.png"), (TILE_SIZE, TILE_SIZE))
 }
 
-
+# Tile types
 tile_map = [["grass" for _ in range(COLS)] for _ in range(ROWS)]
 
 class TrashBin:
@@ -108,17 +54,22 @@ class TrashBin:
     def draw(self):
         screen.blit(bin_img, (self.x * TILE_SIZE, self.y * TILE_SIZE))
 
+# Use the imported generateMaze function
 def generate_maze():
     global tile_map
-    maze = generateMaze(ROWS, COLS)
+    maze = generateMaze(ROWS, COLS)  # Generate the maze using the imported function
+
+    # Update the tile_map based on the generated maze
     for i in range(ROWS):
         for j in range(COLS):
             tile_map[i][j] = 'sidewalk' if maze[i][j] == 'c' else 'grass'
 
+# Generate maze
 generate_maze()
 
+# Place houses adjacent to sidewalks
 def place_houses():
-    for _ in range(10):
+    for _ in range(10):  # Place 10 houses
         while True:
             x, y = random.randint(0, COLS - 1), random.randint(0, ROWS - 1)
             if tile_map[y][x] == "sidewalk":
@@ -131,6 +82,7 @@ def place_houses():
 
 place_houses()
 
+# Draw tile based on type
 def draw_tile(x, y):
     tile_type = tile_map[y][x]
     if tile_type == "grass":
@@ -154,205 +106,59 @@ class Bot:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.prev_pos = None
-        self.pixel_x = x * TILE_SIZE
-        self.pixel_y = y * TILE_SIZE
-        self.target_x = self.pixel_x
-        self.target_y = self.pixel_y
-        self.speed = 4
-        self.moving = False
 
-    def move(self, direction, is_walkable):
-        if self.moving:
-            return
+    def move(self, trash_list):
+        if trash_list:
+            target = trash_list[0]
+            if self.x < target.x: self.x += 1
+            elif self.x > target.x: self.x -= 1
+            elif self.y < target.y: self.y += 1
+            elif self.y > target.y: self.y -= 1
 
-        # Determine the next position based on the input direction
-        if direction == "up":
-            next_x, next_y = self.x, self.y - 1
-        elif direction == "down":
-            next_x, next_y = self.x, self.y + 1
-        elif direction == "left":
-            next_x, next_y = self.x - 1, self.y
-        elif direction == "right":
-            next_x, next_y = self.x + 1, self.y
-        else:
-            return  # Invalid direction
+            # Restrict bot to stay within the frame
+            self.x = max(0, min(self.x, COLS - 1))
+            self.y = max(0, min(self.y, ROWS - 1))
 
-        # Check if the next position is walkable
-        if is_walkable(next_x, next_y):
-            self.prev_pos = (self.x, self.y)
-            self.x, self.y = next_x, next_y
-            self.target_x = self.x * TILE_SIZE
-            self.target_y = self.y * TILE_SIZE
-            self.moving = True
-
-    def update(self, trash_list):
-        if self.moving:
-            dx = self.target_x - self.pixel_x
-            dy = self.target_y - self.pixel_y
-            if abs(dx) <= self.speed and abs(dy) <= self.speed:
-                self.pixel_x = self.target_x
-                self.pixel_y = self.target_y
-                self.moving = False
-
-                # Check for trash at the current position and remove it
-                for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
-                    if self.x == trash.x and self.y == trash.y:
-                        trash_list.remove(trash)
-            else:
-                self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
-                self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
+            # Collect trash
+            if self.x == target.x and self.y == target.y:
+                trash_list.remove(target)
 
     def draw(self):
-        screen.blit(bot_img, (self.pixel_x, self.pixel_y))
+        screen.blit(bot_img, (self.x * TILE_SIZE, self.y * TILE_SIZE))
 
 class NPC:
     def __init__(self, x, y, npc_type):
-        self.x, self.y = x, y
+        self.x = x
+        self.y = y
         self.npc_type = npc_type
         self.image = npc_imgs[npc_type]
-        self.pixel_x = x * TILE_SIZE
-        self.pixel_y = y * TILE_SIZE
-        self.target_x = self.pixel_x
-        self.target_y = self.pixel_y
-        self.speed = 4
-        self.prev_pos = None
-        self.moving = False
-        self.npc_type = npc_type
-        self.direction = "south"
-
-        self.anim_frame = 0
-        self.anim_timer = 0
-        self.frame_interval = 6
-        self.image = self.get_image()
-
-    def get_image(self):
-        if self.npc_type == "normal":
-            return npc_imgs["normal"]["walk"][self.direction][self.anim_frame % 2]
-        elif self.npc_type == "educated":
-            return npc_imgs["educated"]["walk"][self.direction][self.anim_frame % 2]
-        else:
-            return npc_imgs["non-educated"]["walk"][self.direction][self.anim_frame % 2]
-
-    def bfs(self, start, target, is_walkable):
-        """Perform BFS to find the shortest path to the target."""
-        queue = [(start, [])]  # (current_position, path)
-        visited = set()
-
-        while queue:
-            (current_x, current_y), path = queue.pop(0)
-            if (current_x, current_y) in visited:
-                continue
-            visited.add((current_x, current_y))
-
-            # If we reach the target, return the path
-            if (current_x, current_y) == target:
-                return path
-
-            # Explore neighbors
-            for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-                nx, ny = current_x + dx, current_y + dy
-                if is_walkable(nx, ny) and (nx, ny) not in visited:
-                    queue.append(((nx, ny), path + [(nx, ny)]))
-
-        return None  # No path found
 
     def move(self, trash_list):
-        if self.moving:
-            return
+        # Find the nearest home
+        target_home = self.find_nearest_home()
+        if not target_home:
+            return True  # No home to target, NPC stays in place
 
-        def is_walkable(x, y):
-            return (0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] == "sidewalk")
+        target_x, target_y = target_home
 
-        # If the NPC is educated, use BFS to find the nearest trash
-        if self.npc_type == "educated" and trash_list:
-            nearest_trash = None
-            shortest_path = None
-            for trash in trash_list:
-                path = self.bfs((self.x, self.y), (trash.x, trash.y), is_walkable)
-                if path and (shortest_path is None or len(path) < len(shortest_path)):
-                    nearest_trash = trash
-                    shortest_path = path
+        # Calculate the direction to move toward the home
+        if self.x < target_x:
+            new_x, new_y = self.x + 1, self.y
+        elif self.x > target_x:
+            new_x, new_y = self.x - 1, self.y
+        elif self.y < target_y:
+            new_x, new_y = self.x, self.y + 1
+        elif self.y > target_y:
+            new_x, new_y = self.x, self.y - 1
+        else:
+            return True  # Already at the target home
 
-            # If a path to trash is found, move toward it
-            if shortest_path:
-                next_x, next_y = shortest_path[0]  # Take the first step in the path
-                self.prev_pos = (self.x, self.y)
-                self.x, self.y = next_x, next_y
+        # Check if the new position is valid
+        if 0 <= new_x < COLS and 0 <= new_y < ROWS and tile_map[new_y][new_x] == "sidewalk":
+            self.x, self.y = new_x, new_y
 
-                # Pick up the trash if at the same position
-                for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
-                    if self.x == trash.x and self.y == trash.y:
-                        trash_list.remove(trash)
-
-                self.target_x = self.x * TILE_SIZE
-                self.target_y = self.y * TILE_SIZE
-                self.moving = True
-                return
-
-        neighbors = []
-        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-            nx, ny = self.x + dx, self.y + dy
-            if is_walkable(nx, ny):
-                neighbors.append((nx, ny))
-
-        # If no valid neighbors except the previous position, allow backtracking
-        if not neighbors or (len(neighbors) == 1 and neighbors[0] == self.prev_pos):
-            if self.prev_pos:
-                neighbors.append(self.prev_pos)
-
-        if neighbors:
-            self.prev_pos = (self.x, self.y)
-            next_x, next_y = random.choice(neighbors)
-
-            dx = next_x - self.x
-            dy = next_y - self.y
-            if dx == 1:
-                self.direction = "east"
-            elif dx == -1:
-                self.direction = "west"
-            elif dy == 1:
-                self.direction = "south"
-            elif dy == -1:
-                self.direction = "north"
-
-            self.x, self.y = next_x, next_y
-            self.target_x = self.x * TILE_SIZE
-            self.target_y = self.y * TILE_SIZE
-            self.moving = True
-
-            # Educated NPC picks up trash at the new position
-            if self.npc_type == "educated":
-                for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
-                    if self.x == trash.x and self.y == trash.y:
-                        trash_list.remove(trash)
-
-    def update(self, trash_list):
-        if self.moving:
-            dx = self.target_x - self.pixel_x
-            dy = self.target_y - self.pixel_y
-
-            if abs(dx) <= self.speed and abs(dy) <= self.speed:
-                self.pixel_x = self.target_x
-                self.pixel_y = self.target_y
-                self.moving = False
-            else:
-                self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
-                self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
-
-                if self.npc_type in ["normal", "educated", "non-educated"]:
-                    self.anim_timer += 1
-                    if self.anim_timer >= self.frame_interval:
-                        self.anim_frame = (self.anim_frame + 1) % 2
-                        self.image = self.get_image()
-                        self.anim_timer = 0
-
-        elif self.npc_type in ["normal", "educated", "non-educated"]:
-            self.image = self.get_image()
-
-
-         # Throw trash based on type
-        if random.random() < 0.02:
+        # Throw trash based on type
+        if random.random() < 0.05:
             if self.npc_type == "non-educated":
                 trash_list.append(Trash(self.x, self.y))
             elif self.npc_type == "normal" and random.random() < 0.5:
@@ -360,44 +166,54 @@ class NPC:
 
         return True
 
+    def find_nearest_home(self):
+        # Find the nearest home by calculating the Manhattan distance
+        nearest_home = None
+        min_distance = float('inf')
+
+        for y in range(ROWS):
+            for x in range(COLS):
+                if tile_map[y][x] == "house":
+                    distance = abs(self.x - x) + abs(self.y - y)
+                    if distance < min_distance:
+                        min_distance = distance
+                        nearest_home = (x, y)
+
+        return nearest_home
+
     def draw(self):
-        screen.blit(self.image, (self.pixel_x, self.pixel_y))
+        screen.blit(self.image, (self.x * TILE_SIZE, self.y * TILE_SIZE))
 
 # Game state
 trashes = []
-bots = [Bot(1, 1)]
+bots = [Bot(0, 0)]
 npcs = []
 
+# Place NPCs on the edges of the frame
 def generate_npc():
     while True:
         edge = random.choice([0, 1, 2, 3])
-        if edge == 0:
+        if edge == 0: 
             x, y = random.randint(0, COLS - 1), 0
-        elif edge == 1:
+        elif edge == 1: 
             x, y = random.randint(0, COLS - 1), ROWS - 1
-        elif edge == 2:
+        elif edge == 2: 
             x, y = 0, random.randint(0, ROWS - 1)
-        else:
+        elif edge == 3: 
             x, y = COLS - 1, random.randint(0, ROWS - 1)
 
+        # Ensure the NPC spawns on a sidewalk
         if tile_map[y][x] == "sidewalk":
-            if not any(npc.npc_type == "educated" for npc in npcs):
-                npc_type = "educated"
-            else:
-                npc_type = random.choice(["educated", "normal", "non-educated"])
+            npc_type = random.choice(["educated", "normal", "non-educated"])
             return NPC(x, y, npc_type)
 
-
-for _ in range(3):
+# Generate initial NPCs
+for _ in range(3):  # Place 3 NPCs
     npcs.append(generate_npc())
 
 # Game loop
 clock = pygame.time.Clock()
 running = True
-player_bot = Bot(1, 1)  # Initialize the player-controlled bot
-
-def is_walkable(x, y):
-    return 0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] == "sidewalk"
 
 while running:
     screen.fill(WHITE)
@@ -406,39 +222,31 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-       # Handle player input for the bot
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_UP]:
-        player_bot.move("up", is_walkable)
-    elif keys[pygame.K_DOWN]:
-        player_bot.move("down", is_walkable)
-    elif keys[pygame.K_LEFT]:
-        player_bot.move("left", is_walkable)
-    elif keys[pygame.K_RIGHT]:
-        player_bot.move("right", is_walkable)
+    # Update NPCs
+    for npc in npcs[:]:
+        if not npc.move(trashes):
+            npcs.remove(npc)
+            npcs.append(generate_npc())
 
-    # Update and draw NPCs
-    for npc in npcs:
-        npc.move(trashes)
-        npc.update(trashes)
+    # Update bots
+    for bot in bots:
+        bot.move(trashes)
 
-    # Update and draw the player-controlled bot
-    player_bot.update(trashes)
-
-    # Draw the game world
+    # Draw tiles
     for y in range(ROWS):
         for x in range(COLS):
             draw_tile(x, y)
 
+    # Draw game objects
     for trash in trashes:
         trash.draw()
-    player_bot.draw()
+    for bot in bots:
+        bot.draw()
     for npc in npcs:
         npc.draw()
 
     pygame.display.flip()
-    clock.tick(30)
+    clock.tick(60)
 
 pygame.quit()
 sys.exit()
-# End of the code
