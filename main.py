@@ -35,8 +35,26 @@ trash_images = [
 
 # NPC types
 npc_imgs = {
-    "educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "educated-npc.png"), (TILE_SIZE, TILE_SIZE)),
-    "normal": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "normal-npc.png"), (TILE_SIZE, TILE_SIZE)),
+    "educated": {
+        "walk": {
+            "north": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/North 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/North 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "south": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/South 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/South 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "east": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/East 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/East 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "west": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/West 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Educated-NPC/West 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ]
+        }
+    },
     "normal": {
         "walk": {
             "north": [
@@ -57,7 +75,26 @@ npc_imgs = {
             ]
         }
     },
-    "non-educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "non-educated-npc.png"), (TILE_SIZE, TILE_SIZE))
+    "non-educated": {
+        "walk": {
+            "north": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/North 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/North 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "south": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/South 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/South 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "east": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/East 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/East 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "west": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/West 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Non-Educated-NPC/West 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ]
+        }
+    }
 }
 
 
@@ -187,8 +224,10 @@ class NPC:
     def get_image(self):
         if self.npc_type == "normal":
             return npc_imgs["normal"]["walk"][self.direction][self.anim_frame % 2]
+        elif self.npc_type == "educated":
+            return npc_imgs["educated"]["walk"][self.direction][self.anim_frame % 2]
         else:
-            return npc_imgs[self.npc_type]
+            return npc_imgs["non-educated"]["walk"][self.direction][self.anim_frame % 2]
 
     def bfs(self, start, target, is_walkable):
         """Perform BFS to find the shortest path to the target."""
@@ -296,17 +335,19 @@ class NPC:
                 self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
                 self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
 
-                if self.npc_type == "normal":
+                if self.npc_type in ["normal", "educated", "non-educated"]:
                     self.anim_timer += 1
                     if self.anim_timer >= self.frame_interval:
                         self.anim_frame = (self.anim_frame + 1) % 2
                         self.image = self.get_image()
                         self.anim_timer = 0
-        elif self.npc_type == "normal":
+
+        elif self.npc_type in ["normal", "educated", "non-educated"]:
             self.image = self.get_image()
 
+
          # Throw trash based on type
-        if random.random() < 0.05:
+        if random.random() < 0.02:
             if self.npc_type == "non-educated":
                 trash_list.append(Trash(self.x, self.y))
             elif self.npc_type == "normal" and random.random() < 0.5:
