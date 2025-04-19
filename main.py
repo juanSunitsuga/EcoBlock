@@ -125,59 +125,31 @@ class Bot:
         self.speed = 4
         self.moving = False
 
-    def bfs(self, start, target, is_walkable):
-        """Perform BFS to find the shortest path to the target."""
-        queue = [(start, [])]  # (current_position, path)
-        visited = set()
-
-        while queue:
-            (current_x, current_y), path = queue.pop(0)
-            if (current_x, current_y) in visited:
-                continue
-            visited.add((current_x, current_y))
-
-            # If we reach the target, return the path
-            if (current_x, current_y) == target:
-                return path
-
-            # Explore neighbors
-            for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-                nx, ny = current_x + dx, current_y + dy
-                if is_walkable(nx, ny) and (nx, ny) not in visited:
-                    queue.append(((nx, ny), path + [(nx, ny)]))
-
-        return None  # No path found
-
-    def move(self, trash_list):
-        # Do nothing if there is no trash
-        if not trash_list:
-            return
-
+    def move(self, direction, is_walkable):
         if self.moving:
             return
 
-        def is_walkable(x, y):
-            return 0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] == "sidewalk"
+        # Determine the next position based on the input direction
+        if direction == "up":
+            next_x, next_y = self.x, self.y - 1
+        elif direction == "down":
+            next_x, next_y = self.x, self.y + 1
+        elif direction == "left":
+            next_x, next_y = self.x - 1, self.y
+        elif direction == "right":
+            next_x, next_y = self.x + 1, self.y
+        else:
+            return  # Invalid direction
 
-        # Find the nearest trash using BFS
-        target = trash_list[0]
-        path = self.bfs((self.x, self.y), (target.x, target.y), is_walkable)
-
-        if path:
-            next_x, next_y = path[0]  # Take the first step in the path
+        # Check if the next position is walkable
+        if is_walkable(next_x, next_y):
             self.prev_pos = (self.x, self.y)
             self.x, self.y = next_x, next_y
-
-            # Check for trash at the current position and remove it
-            for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
-                if self.x == trash.x and self.y == trash.y:
-                    trash_list.remove(trash)
-
             self.target_x = self.x * TILE_SIZE
             self.target_y = self.y * TILE_SIZE
             self.moving = True
 
-    def update(self, trash_list):
+    def update(self):
         if self.moving:
             dx = self.target_x - self.pixel_x
             dy = self.target_y - self.pixel_y
@@ -185,11 +157,6 @@ class Bot:
                 self.pixel_x = self.target_x
                 self.pixel_y = self.target_y
                 self.moving = False
-
-                # Check for trash at the current position and remove it
-                for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
-                    if self.x == trash.x and self.y == trash.y:
-                        trash_list.remove(trash)
             else:
                 self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
                 self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
@@ -223,12 +190,61 @@ class NPC:
         else:
             return npc_imgs[self.npc_type]
 
+    def bfs(self, start, target, is_walkable):
+        """Perform BFS to find the shortest path to the target."""
+        queue = [(start, [])]  # (current_position, path)
+        visited = set()
+
+        while queue:
+            (current_x, current_y), path = queue.pop(0)
+            if (current_x, current_y) in visited:
+                continue
+            visited.add((current_x, current_y))
+
+            # If we reach the target, return the path
+            if (current_x, current_y) == target:
+                return path
+
+            # Explore neighbors
+            for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                nx, ny = current_x + dx, current_y + dy
+                if is_walkable(nx, ny) and (nx, ny) not in visited:
+                    queue.append(((nx, ny), path + [(nx, ny)]))
+
+        return None  # No path found
+
     def move(self, trash_list):
         if self.moving:
             return
 
         def is_walkable(x, y):
             return (0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] == "sidewalk")
+
+        # If the NPC is educated, use BFS to find the nearest trash
+        if self.npc_type == "educated" and trash_list:
+            nearest_trash = None
+            shortest_path = None
+            for trash in trash_list:
+                path = self.bfs((self.x, self.y), (trash.x, trash.y), is_walkable)
+                if path and (shortest_path is None or len(path) < len(shortest_path)):
+                    nearest_trash = trash
+                    shortest_path = path
+
+            # If a path to trash is found, move toward it
+            if shortest_path:
+                next_x, next_y = shortest_path[0]  # Take the first step in the path
+                self.prev_pos = (self.x, self.y)
+                self.x, self.y = next_x, next_y
+
+                # Pick up the trash if at the same position
+                for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
+                    if self.x == trash.x and self.y == trash.y:
+                        trash_list.remove(trash)
+
+                self.target_x = self.x * TILE_SIZE
+                self.target_y = self.y * TILE_SIZE
+                self.moving = True
+                return
 
         neighbors = []
         for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
@@ -332,6 +348,10 @@ for _ in range(3):
 # Game loop
 clock = pygame.time.Clock()
 running = True
+player_bot = Bot(1, 1)  # Initialize the player-controlled bot
+
+def is_walkable(x, y):
+    return 0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] == "sidewalk"
 
 while running:
     screen.fill(WHITE)
@@ -340,27 +360,38 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+       # Handle player input for the bot
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_UP]:
+        player_bot.move("up", is_walkable)
+    elif keys[pygame.K_DOWN]:
+        player_bot.move("down", is_walkable)
+    elif keys[pygame.K_LEFT]:
+        player_bot.move("left", is_walkable)
+    elif keys[pygame.K_RIGHT]:
+        player_bot.move("right", is_walkable)
+
+    # Update and draw NPCs
     for npc in npcs:
         npc.move(trashes)
         npc.update(trashes)
 
-    for bot in bots:
-        bot.move(trashes)
-        bot.update(trashes)
+    # Update and draw the player-controlled bot
+    player_bot.update()
 
+    # Draw the game world
     for y in range(ROWS):
         for x in range(COLS):
             draw_tile(x, y)
 
     for trash in trashes:
         trash.draw()
-    for bot in bots:
-        bot.draw()
+    player_bot.draw()
     for npc in npcs:
         npc.draw()
 
     pygame.display.flip()
-    clock.tick(30)
+    clock.tick(24)
 
 pygame.quit()
 sys.exit()
