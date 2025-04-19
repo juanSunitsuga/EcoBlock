@@ -1,9 +1,9 @@
+# -- existing imports and initializations --
 import pygame
 import sys
 import random
 from MazeGenerator import generateMaze  # Import the generateMaze function
 
-# Initialize Pygame
 pygame.init()
 
 # Screen settings
@@ -13,11 +13,9 @@ ROWS, COLS = HEIGHT // TILE_SIZE, WIDTH // TILE_SIZE
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("EcoBlock Simulator")
 
-# Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
-# Asset path
 ASSETS_PATH = "assets/"
 
 # Load images
@@ -27,7 +25,6 @@ house_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "house.png"),
 bin_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "trash-bin.png"), (TILE_SIZE, TILE_SIZE))
 bot_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "trash-bot.png"), (TILE_SIZE, TILE_SIZE))
 
-# Trash images
 trash_images = [
     pygame.transform.scale(pygame.image.load(ASSETS_PATH + "plastic-bottle.png"), (TILE_SIZE, TILE_SIZE)),
     pygame.transform.scale(pygame.image.load(ASSETS_PATH + "plastic.png"), (TILE_SIZE, TILE_SIZE)),
@@ -41,16 +38,29 @@ npc_imgs = {
     "educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "educated-npc.png"), (TILE_SIZE, TILE_SIZE)),
     "normal": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "normal-npc.png"), (TILE_SIZE, TILE_SIZE)),
     "normal": {
-        "idle": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/Idle.png"), (TILE_SIZE, TILE_SIZE)),
-        "walk": [
-            pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/South 1.png"), (TILE_SIZE, TILE_SIZE)),
-            pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/South 2.png"), (TILE_SIZE, TILE_SIZE)),
-        ]
+        "walk": {
+            "north": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/North 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/North 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "south": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/South 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/South 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "east": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/East 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/East 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "west": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/West 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/West 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ]
+        }
     },
     "non-educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "non-educated-npc.png"), (TILE_SIZE, TILE_SIZE))
 }
 
-# Tile types
+
 tile_map = [["grass" for _ in range(COLS)] for _ in range(ROWS)]
 
 class TrashBin:
@@ -61,20 +71,29 @@ class TrashBin:
     def draw(self):
         screen.blit(bin_img, (self.x * TILE_SIZE, self.y * TILE_SIZE))
 
-# Use the imported generateMaze function
 def generate_maze():
     global tile_map
-    maze = generateMaze(ROWS, COLS)  # Generate the maze using the imported function
-
-    # Update the tile_map based on the generated maze
+    maze = generateMaze(ROWS, COLS)
     for i in range(ROWS):
         for j in range(COLS):
             tile_map[i][j] = 'sidewalk' if maze[i][j] == 'c' else 'grass'
 
-# Generate maze
 generate_maze()
 
-# Draw tile based on type
+def place_houses():
+    for _ in range(10):
+        while True:
+            x, y = random.randint(0, COLS - 1), random.randint(0, ROWS - 1)
+            if tile_map[y][x] == "sidewalk":
+                for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                    house_x, house_y = x + dx, y + dy
+                    if 0 <= house_x < COLS and 0 <= house_y < ROWS and tile_map[house_y][house_x] == "grass":
+                        tile_map[house_y][house_x] = "house"
+                        break
+                break
+
+place_houses()
+
 def draw_tile(x, y):
     tile_type = tile_map[y][x]
     if tile_type == "grass":
@@ -176,19 +195,17 @@ class NPC:
         self.speed = 4
         self.prev_pos = None
         self.moving = False
+        self.npc_type = npc_type
+        self.direction = "south"
 
         self.anim_frame = 0
         self.anim_timer = 0
-        self.frame_interval = 10
+        self.frame_interval = 6
+        self.image = self.get_image()
 
-        self.image = self.get_image(idle=True)
-
-    def get_image(self, idle=False):
+    def get_image(self):
         if self.npc_type == "normal":
-            if idle:
-                return npc_imgs["normal"]["idle"]
-            else:
-                return npc_imgs["normal"]["walk"][self.anim_frame % 2]
+            return npc_imgs["normal"]["walk"][self.direction][self.anim_frame % 2]
         else:
             return npc_imgs[self.npc_type]
 
@@ -207,7 +224,20 @@ class NPC:
 
         if neighbors:
             self.prev_pos = (self.x, self.y)
-            self.x, self.y = random.choice(neighbors)
+            next_x, next_y = random.choice(neighbors)
+
+            dx = next_x - self.x
+            dy = next_y - self.y
+            if dx == 1:
+                self.direction = "east"
+            elif dx == -1:
+                self.direction = "west"
+            elif dy == 1:
+                self.direction = "south"
+            elif dy == -1:
+                self.direction = "north"
+
+            self.x, self.y = next_x, next_y
             self.target_x = self.x * TILE_SIZE
             self.target_y = self.y * TILE_SIZE
             self.moving = True
@@ -221,24 +251,18 @@ class NPC:
                 self.pixel_x = self.target_x
                 self.pixel_y = self.target_y
                 self.moving = False
-                if self.npc_type == "normal":
-                    self.image = self.get_image(idle=True)
             else:
                 self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
                 self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
 
-        if random.random() < 0.05:
-            if self.npc_type == "non-educated":
-                trash_list.append(Trash(self.x, self.y))
-            elif self.npc_type == "normal" and random.random() < 0.5:
-                trash_list.append(Trash(self.x, self.y))
-
-        if self.npc_type == "normal":
-            self.anim_timer += 1
-            if self.anim_timer >= self.frame_interval:
-                self.anim_frame = (self.anim_frame + 1) % 2
-                self.image = self.get_image(idle=False)
-                self.anim_timer = 0
+                if self.npc_type == "normal":
+                    self.anim_timer += 1
+                    if self.anim_timer >= self.frame_interval:
+                        self.anim_frame = (self.anim_frame + 1) % 2
+                        self.image = self.get_image()
+                        self.anim_timer = 0
+        elif self.npc_type == "normal":
+            self.image = self.get_image()
 
         return True
 
@@ -251,13 +275,25 @@ bots = [Bot(1, 1)]
 npcs = []
 
 def generate_npc():
-    x, y = random.randint(0, COLS-1), random.randint(0, ROWS-1)
-    npc_type = random.choice(["educated", "normal", "non-educated"])
-    return NPC(x, y, npc_type)
+    while True:
+        edge = random.choice([0, 1, 2, 3])
+        if edge == 0:
+            x, y = random.randint(0, COLS - 1), 0
+        elif edge == 1:
+            x, y = random.randint(0, COLS - 1), ROWS - 1
+        elif edge == 2:
+            x, y = 0, random.randint(0, ROWS - 1)
+        else:
+            x, y = COLS - 1, random.randint(0, ROWS - 1)
+
+        if tile_map[y][x] == "sidewalk":
+            npc_type = random.choice(["educated", "normal", "non-educated"])
+            return NPC(x, y, npc_type)
 
 for _ in range(3):
     npcs.append(generate_npc())
 
+# Game loop
 clock = pygame.time.Clock()
 running = True
 
@@ -267,11 +303,6 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-
-    for npc in npcs[:]:
-        if not npc.move(trashes):
-            npcs.remove(npc)
-            npcs.append(generate_npc())
 
     for npc in npcs:
         npc.move(trashes)
@@ -293,7 +324,7 @@ while running:
         npc.draw()
 
     pygame.display.flip()
-    clock.tick(5)
+    clock.tick(30)
 
 pygame.quit()
 sys.exit()
