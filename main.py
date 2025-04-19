@@ -7,7 +7,7 @@ from MazeGenerator import generateMaze  # Import the generateMaze function
 pygame.init()
 
 # Screen settings
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 832, 640
 TILE_SIZE = 64
 ROWS, COLS = HEIGHT // TILE_SIZE, WIDTH // TILE_SIZE
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
