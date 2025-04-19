@@ -1,231 +1,165 @@
-import pygame
-import sys
+# https://github.com/OrWestSide/python-scripts
+# Maze generator -- Randomized Prim Algorithm
+
+## Imports
 import random
+import time
 
-# Initialize Pygame
-pygame.init()
+wall = 'w'
+cell = 'c'
+unvisited = 'u'
 
-# Screen settings
-WIDTH, HEIGHT = 800, 600
-TILE_SIZE = 64
-ROWS, COLS = HEIGHT // TILE_SIZE, WIDTH // TILE_SIZE
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("EcoBlock Simulator")
+## Functions
+def printMaze(maze, height, width):
+	for i in range(0, height):
+		for j in range(0, width):
+			print(' ' if str(maze[i][j]) == 'c' else str(maze[i][j]), end=" ")
+		print('\n')
 
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
+# Find number of surrounding cells
+def surroundingCells(maze, rand_wall):
+	s_cells = 0
+	if (maze[rand_wall[0]-1][rand_wall[1]] == 'c'):
+		s_cells += 1
+	if (maze[rand_wall[0]+1][rand_wall[1]] == 'c'):
+		s_cells += 1
+	if (maze[rand_wall[0]][rand_wall[1]-1] == 'c'):
+		s_cells +=1
+	if (maze[rand_wall[0]][rand_wall[1]+1] == 'c'):
+		s_cells += 1
 
-# Asset path
-ASSETS_PATH = "assets/"
+	return s_cells
 
-# Load images
-grass_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "grass.png"), (TILE_SIZE, TILE_SIZE))
-sidewalk_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "sidewalk.png"), (TILE_SIZE, TILE_SIZE))
-house_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "house.png"), (TILE_SIZE, TILE_SIZE))
-bin_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "trash-bin.png"), (TILE_SIZE, TILE_SIZE))
-bot_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "trash-bot.png"), (TILE_SIZE, TILE_SIZE))
 
-# Trash images
-trash_images = [
-    pygame.transform.scale(pygame.image.load(ASSETS_PATH + "plastic-bottle.png"), (TILE_SIZE, TILE_SIZE)),
-    pygame.transform.scale(pygame.image.load(ASSETS_PATH + "plastic.png"), (TILE_SIZE, TILE_SIZE)),
-    pygame.transform.scale(pygame.image.load(ASSETS_PATH + "eaten-apple.png"), (TILE_SIZE, TILE_SIZE)),
-    pygame.transform.scale(pygame.image.load(ASSETS_PATH + "fishbone.png"), (TILE_SIZE, TILE_SIZE)),
-    pygame.transform.scale(pygame.image.load(ASSETS_PATH + "battery.png"), (TILE_SIZE, TILE_SIZE))
-]
+## Main code
+# Init variables
 
-# NPC types
-npc_imgs = {
-    "educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "educated-npc.png"), (TILE_SIZE, TILE_SIZE)),
-    "normal": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "normal-npc.png"), (TILE_SIZE, TILE_SIZE)),
-    "non-educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "non-educated-npc.png"), (TILE_SIZE, TILE_SIZE))
-}
+def generateMaze(height, width):
+    global wall, cell, unvisited
+    maze = []
 
-# Tile types
-tile_map = [["grass" for _ in range(COLS)] for _ in range(ROWS)]
+    # Denote all cells as unvisited
+    for i in range(0, height):
+        line = []
+        for j in range(0, width):
+            line.append(unvisited)
+        maze.append(line)
 
-class TrashBin:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+    # Randomize starting point and set it a cell
+    starting_height = int(random.random() * height)
+    starting_width = int(random.random() * width)
+    if starting_height == 0:
+        starting_height += 1
+    if starting_height == height - 1:
+        starting_height -= 1
+    if starting_width == 0:
+        starting_width += 1
+    if starting_width == width - 1:
+        starting_width -= 1
 
-    def draw(self):
-        screen.blit(bin_img, (self.x * TILE_SIZE, self.y * TILE_SIZE))
+    # Mark it as cell and add surrounding walls to the list
+    maze[starting_height][starting_width] = wall  # Now 'wall' represents grass
+    walls = []
+    walls.append([starting_height - 1, starting_width])
+    walls.append([starting_height, starting_width - 1])
+    walls.append([starting_height, starting_width + 1])
+    walls.append([starting_height + 1, starting_width])
 
-# Maze generator
-def generate_maze():
-    global tile_map
-    wall = 'w'
-    cell = 'c'
-    unvisited = 'u'
-
-    maze = [[unvisited for _ in range(COLS)] for _ in range(ROWS)]
-
-    # Randomize starting point
-    start_x, start_y = random.randint(1, ROWS - 2), random.randint(1, COLS - 2)
-    maze[start_x][start_y] = cell
-    walls = [
-        [start_x - 1, start_y],
-        [start_x + 1, start_y],
-        [start_x, start_y - 1],
-        [start_x, start_y + 1]
-    ]
-
-    for wall in walls:
-        maze[wall[0]][wall[1]] = 'w'
+    # Denote walls in maze
+    maze[starting_height - 1][starting_width] = cell  # Now 'cell' represents bricks
+    maze[starting_height][starting_width - 1] = cell
+    maze[starting_height][starting_width + 1] = cell
+    maze[starting_height + 1][starting_width] = cell
 
     while walls:
-        rand_wall = random.choice(walls)
-        walls.remove(rand_wall)
+        # Pick a random wall
+        rand_wall = walls[int(random.random() * len(walls)) - 1]
 
-        x, y = rand_wall
-        if maze[x][y] == 'w':
-            neighbors = [
-                (x - 1, y),
-                (x + 1, y),
-                (x, y - 1),
-                (x, y + 1)
-            ]
-            cells = [n for n in neighbors if 0 <= n[0] < ROWS and 0 <= n[1] < COLS and maze[n[0]][n[1]] == cell]
+        # Check if it is a left wall
+        if rand_wall[1] != 0:
+            if maze[rand_wall[0]][rand_wall[1] - 1] == 'u' and maze[rand_wall[0]][rand_wall[1] + 1] == wall:
+                # Find the number of surrounding cells
+                s_cells = surroundingCells(maze, rand_wall)
 
-            if len(cells) == 1:
-                maze[x][y] = cell
-                for n in neighbors:
-                    if 0 <= n[0] < ROWS and 0 <= n[1] < COLS and maze[n[0]][n[1]] == unvisited:
-                        maze[n[0]][n[1]] = 'w'
-                        walls.append(n)
+                if s_cells < 2:
+                    # Denote the new path
+                    maze[rand_wall[0]][rand_wall[1]] = wall
 
-    for i in range(ROWS):
-        for j in range(COLS):
-            tile_map[i][j] = 'sidewalk' if maze[i][j] == cell else 'grass'
+                    # Mark the new walls
+                    # Upper cell
+                    if rand_wall[0] != 0:
+                        if maze[rand_wall[0] - 1][rand_wall[1]] != wall:
+                            maze[rand_wall[0] - 1][rand_wall[1]] = cell
+                        if [rand_wall[0] - 1, rand_wall[1]] not in walls:
+                            walls.append([rand_wall[0] - 1, rand_wall[1]])
 
-# Generate maze
-generate_maze()
+                    # Bottom cell
+                    if rand_wall[0] != height - 1:
+                        if maze[rand_wall[0] + 1][rand_wall[1]] != wall:
+                            maze[rand_wall[0] + 1][rand_wall[1]] = cell
+                        if [rand_wall[0] + 1, rand_wall[1]] not in walls:
+                            walls.append([rand_wall[0] + 1, rand_wall[1]])
 
-# Place houses adjacent to sidewalks
-def place_houses():
-    for _ in range(3):  # Place 3 houses
-        while True:
-            x, y = random.randint(0, COLS - 1), random.randint(0, ROWS - 1)
-            if tile_map[y][x] == "sidewalk":
-                for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-                    house_x, house_y = x + dx, y + dy
-                    if 0 <= house_x < COLS and 0 <= house_y < ROWS and tile_map[house_y][house_x] == "grass":
-                        tile_map[house_y][house_x] = "house"
-                        break
-                break
+                    # Leftmost cell
+                    if rand_wall[1] != 0:
+                        if maze[rand_wall[0]][rand_wall[1] - 1] != wall:
+                            maze[rand_wall[0]][rand_wall[1] - 1] = cell
+                        if [rand_wall[0], rand_wall[1] - 1] not in walls:
+                            walls.append([rand_wall[0], rand_wall[1] - 1])
 
-place_houses()
+                # Delete wall
+                for wall in walls:
+                    if wall[0] == rand_wall[0] and wall[1] == rand_wall[1]:
+                        walls.remove(wall)
 
-# Draw tile based on type
-def draw_tile(x, y):
-    tile_type = tile_map[y][x]
-    if tile_type == "grass":
-        screen.blit(grass_img, (x * TILE_SIZE, y * TILE_SIZE))
-    elif tile_type == "sidewalk":
-        screen.blit(sidewalk_img, (x * TILE_SIZE, y * TILE_SIZE))
-    elif tile_type == "house":
-        screen.blit(grass_img, (x * TILE_SIZE, y * TILE_SIZE))
-        screen.blit(house_img, (x * TILE_SIZE, y * TILE_SIZE))
+                continue
 
-class Trash:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.image = random.choice(trash_images)
+        # Check if it is an upper wall
+        if rand_wall[0] != 0:
+            if maze[rand_wall[0] - 1][rand_wall[1]] == 'u' and maze[rand_wall[0] + 1][rand_wall[1]] == wall:
+                s_cells = surroundingCells(maze, rand_wall)
+                if s_cells < 2:
+                    # Denote the new path
+                    maze[rand_wall[0]][rand_wall[1]] = wall
 
-    def draw(self):
-        screen.blit(self.image, (self.x * TILE_SIZE, self.y * TILE_SIZE))
+                    # Mark the new walls
+                    # Upper cell
+                    if rand_wall[0] != 0:
+                        if maze[rand_wall[0] - 1][rand_wall[1]] != wall:
+                            maze[rand_wall[0] - 1][rand_wall[1]] = cell
+                        if [rand_wall[0] - 1, rand_wall[1]] not in walls:
+                            walls.append([rand_wall[0] - 1, rand_wall[1]])
 
-class Bot:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+                    # Leftmost cell
+                    if rand_wall[1] != 0:
+                        if maze[rand_wall[0]][rand_wall[1] - 1] != wall:
+                            maze[rand_wall[0]][rand_wall[1] - 1] = cell
+                        if [rand_wall[0], rand_wall[1] - 1] not in walls:
+                            walls.append([rand_wall[0], rand_wall[1] - 1])
 
-    def move(self, trash_list):
-        if trash_list:
-            target = trash_list[0]
-            if self.x < target.x: self.x += 1
-            elif self.x > target.x: self.x -= 1
-            elif self.y < target.y: self.y += 1
-            elif self.y > target.y: self.y -= 1
+                    # Rightmost cell
+                    if rand_wall[1] != width - 1:
+                        if maze[rand_wall[0]][rand_wall[1] + 1] != wall:
+                            maze[rand_wall[0]][rand_wall[1] + 1] = cell
+                        if [rand_wall[0], rand_wall[1] + 1] not in walls:
+                            walls.append([rand_wall[0], rand_wall[1] + 1])
 
-            # Collect trash
-            if self.x == target.x and self.y == target.y:
-                trash_list.remove(target)
+                # Delete wall
+                for wall in walls:
+                    if wall[0] == rand_wall[0] and wall[1] == rand_wall[1]:
+                        walls.remove(wall)
 
-    def draw(self):
-        screen.blit(bot_img, (self.x * TILE_SIZE, self.y * TILE_SIZE))
+                continue
 
-class NPC:
-    def __init__(self, x, y, npc_type):
-        self.x = x
-        self.y = y
-        self.direction = 1
-        self.npc_type = npc_type
-        self.image = npc_imgs[npc_type]
+        # Delete the wall from the list anyway
+        for wall in walls:
+            if wall[0] == rand_wall[0] and wall[1] == rand_wall[1]:
+                walls.remove(wall)
 
-    def move(self, trash_list):
-        self.x += self.direction
-        if self.x >= COLS or self.x < 0 or tile_map[self.y][self.x] != "sidewalk":
-            self.direction *= -1
-            self.x += self.direction
+    # Mark the remaining unvisited cells as walls
+    for i in range(0, height):
+        for j in range(0, width):
+            if maze[i][j] == 'u':
+                maze[i][j] = cell
 
-        # Throw trash based on type
-        if random.random() < 0.05:
-            if self.npc_type == "non-educated":
-                trash_list.append(Trash(self.x, self.y))
-            elif self.npc_type == "normal" and random.random() < 0.5:
-                trash_list.append(Trash(self.x, self.y))
-
-    def draw(self):
-        screen.blit(self.image, (self.x * TILE_SIZE, self.y * TILE_SIZE))
-
-# Game state
-trashes = []
-bots = [Bot(0, 0)]
-npcs = []
-
-# Place NPCs on sidewalks
-for _ in range(3):  # Place 3 NPCs
-    while True:
-        x, y = random.randint(0, COLS - 1), random.randint(0, ROWS - 1)
-        if tile_map[y][x] == "sidewalk":
-            npc_type = random.choice(["educated", "normal", "non-educated"])
-            npcs.append(NPC(x, y, npc_type))
-            break
-
-# Game loop
-clock = pygame.time.Clock()
-running = True
-
-while running:
-    screen.fill(WHITE)
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    for npc in npcs:
-        npc.move(trashes)
-
-    for bot in bots:
-        bot.move(trashes)
-
-    for y in range(ROWS):
-        for x in range(COLS):
-            draw_tile(x, y)
-
-    for trash in trashes:
-        trash.draw()
-    for bot in bots:
-        bot.draw()
-    for npc in npcs:
-        npc.draw()
-
-    pygame.display.flip()
-    clock.tick(5)
-
-pygame.quit()
-sys.exit()
+    return maze
