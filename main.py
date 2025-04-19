@@ -54,12 +54,10 @@ class TrashBin:
     def draw(self):
         screen.blit(bin_img, (self.x * TILE_SIZE, self.y * TILE_SIZE))
 
-# Use the imported generateMaze function
 def generate_maze():
     global tile_map
-    maze = generateMaze(ROWS, COLS)  # Generate the maze using the imported function
+    maze = generateMaze(ROWS, COLS) 
 
-    # Update the tile_map based on the generated maze
     for i in range(ROWS):
         for j in range(COLS):
             tile_map[i][j] = 'sidewalk' if maze[i][j] == 'c' else 'grass'
@@ -67,9 +65,8 @@ def generate_maze():
 # Generate maze
 generate_maze()
 
-# Place houses adjacent to sidewalks
 def place_houses():
-    for _ in range(10):  # Place 10 houses
+    for _ in range(10): 
         while True:
             x, y = random.randint(0, COLS - 1), random.randint(0, ROWS - 1)
             if tile_map[y][x] == "sidewalk":
@@ -82,7 +79,6 @@ def place_houses():
 
 place_houses()
 
-# Draw tile based on type
 def draw_tile(x, y):
     tile_type = tile_map[y][x]
     if tile_type == "grass":
@@ -115,7 +111,6 @@ class Bot:
             elif self.y < target.y: self.y += 1
             elif self.y > target.y: self.y -= 1
 
-            # Restrict bot to stay within the frame
             self.x = max(0, min(self.x, COLS - 1))
             self.y = max(0, min(self.y, ROWS - 1))
 
@@ -134,22 +129,19 @@ class NPC:
         self.image = npc_imgs[npc_type]
 
     def move(self, trash_list):
-        # Move NPC along sidewalks in all four directions
-        direction = random.choice([(0, 1), (1, 0), (0, -1), (-1, 0)])  # Down, Right, Up, Left
+        direction = random.choice([(0, 1), (1, 0), (0, -1), (-1, 0)])
         new_x, new_y = self.x + direction[0], self.y + direction[1]
 
-        # Ensure NPC stays on sidewalks
         if 0 <= new_x < COLS and 0 <= new_y < ROWS and tile_map[new_y][new_x] == "sidewalk":
             self.x, self.y = new_x, new_y
 
-        # Throw trash based on type
         if random.random() < 0.05:
             if self.npc_type == "non-educated":
                 trash_list.append(Trash(self.x, self.y))
             elif self.npc_type == "normal" and random.random() < 0.5:
                 trash_list.append(Trash(self.x, self.y))
 
-        return True  # NPC is still valid
+        return True
 
     def draw(self):
         screen.blit(self.image, (self.x * TILE_SIZE, self.y * TILE_SIZE))
@@ -162,15 +154,14 @@ npcs = []
 # Place NPCs on the edges of the frame
 def generate_npc():
     while True:
-        # Randomly choose an edge: 0 = top, 1 = bottom, 2 = left, 3 = right
         edge = random.choice([0, 1, 2, 3])
-        if edge == 0:  # Top edge
+        if edge == 0: 
             x, y = random.randint(0, COLS - 1), 0
-        elif edge == 1:  # Bottom edge
+        elif edge == 1: 
             x, y = random.randint(0, COLS - 1), ROWS - 1
-        elif edge == 2:  # Left edge
+        elif edge == 2: 
             x, y = 0, random.randint(0, ROWS - 1)
-        elif edge == 3:  # Right edge
+        elif edge == 3: 
             x, y = COLS - 1, random.randint(0, ROWS - 1)
 
         # Ensure the NPC spawns on a sidewalk
@@ -195,9 +186,9 @@ while running:
 
     # Update NPCs
     for npc in npcs[:]:
-        if not npc.move(trashes):  # If NPC leaves the frame, remove it
+        if not npc.move(trashes):
             npcs.remove(npc)
-            npcs.append(generate_npc())  # Generate a new NPC
+            npcs.append(generate_npc())
 
     # Update bots
     for bot in bots:
