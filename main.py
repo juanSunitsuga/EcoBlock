@@ -39,9 +39,16 @@ trash_images = [
 # NPC types
 npc_imgs = {
     "educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "educated-npc.png"), (TILE_SIZE, TILE_SIZE)),
-    "normal": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "normal-npc.png"), (TILE_SIZE, TILE_SIZE)),
+    "normal": {
+        "idle": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/Idle.png"), (TILE_SIZE, TILE_SIZE)),
+        "walk": [
+            pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/South 1.png"), (TILE_SIZE, TILE_SIZE)),
+            pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Neutral-NPC/South 2.png"), (TILE_SIZE, TILE_SIZE)),
+        ]
+    },
     "non-educated": pygame.transform.scale(pygame.image.load(ASSETS_PATH + "non-educated-npc.png"), (TILE_SIZE, TILE_SIZE))
 }
+
 
 # Tile types
 tile_map = [["grass" for _ in range(COLS)] for _ in range(ROWS)]
@@ -106,10 +113,19 @@ class Bot:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.prev_pos = None  # to help avoid immediate back‑and‑forth
+        self.pixel_x = x * TILE_SIZE
+        self.pixel_y = y * TILE_SIZE
+        self.target_x = self.pixel_x
+        self.target_y = self.pixel_y
+        self.speed = 4  # pixels per frame
+        self.prev_pos = None
+        self.moving = False
 
     def move(self, trash_list):
-        # 1) Gather all sidewalk neighbors (Down, Right, Up, Left)
+        if self.moving:
+            return  # wait until current movement finishes
+
+        # Determine next position
         neighbors = []
         for dx, dy in [(0,1), (1,0), (0,-1), (-1,0)]:
             nx, ny = self.x + dx, self.y + dy
@@ -117,81 +133,123 @@ class Bot:
                 if tile_map[ny][nx] == "sidewalk" and (nx, ny) != self.prev_pos:
                     neighbors.append((nx, ny))
 
-        # 2) Decide next step
         if neighbors:
-            if trash_list:
-                # target the first piece of trash
-                target = trash_list[0]
-                # compute current distance
+            target = trash_list[0] if trash_list else None
+            if target:
                 cur_dist = abs(self.x - target.x) + abs(self.y - target.y)
-
-                # filter for neighbors that actually get us closer
                 closer_steps = [
                     (nx, ny) for (nx, ny) in neighbors
                     if abs(nx - target.x) + abs(ny - target.y) < cur_dist
                 ]
-
                 if closer_steps:
-                    # if we have one or more “closer” options, pick randomly among them
                     next_x, next_y = random.choice(closer_steps)
                 else:
-                    # otherwise wander randomly among all sidewalk neighbors
                     next_x, next_y = random.choice(neighbors)
             else:
-                # no trash: pure random sidewalk wander
                 next_x, next_y = random.choice(neighbors)
 
-            # commit the move
             self.prev_pos = (self.x, self.y)
             self.x, self.y = next_x, next_y
+            self.target_x = self.x * TILE_SIZE
+            self.target_y = self.y * TILE_SIZE
+            self.moving = True
 
-            # 3) Collect trash if we landed on it
-            if trash_list and self.x == target.x and self.y == target.y:
-                trash_list.remove(target)
-
-        # always return True so caller knows the Bot is still active
-        return True
+    def update(self, trash_list):
+        if self.moving:
+            dx = self.target_x - self.pixel_x
+            dy = self.target_y - self.pixel_y
+            if abs(dx) <= self.speed and abs(dy) <= self.speed:
+                self.pixel_x = self.target_x
+                self.pixel_y = self.target_y
+                self.moving = False
+                # Check for trash pickup
+                for t in trash_list:
+                    if self.x == t.x and self.y == t.y:
+                        trash_list.remove(t)
+                        break
+            else:
+                self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
+                self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
 
     def draw(self):
-        screen.blit(bot_img, (self.x * TILE_SIZE, self.y * TILE_SIZE))
-
+        screen.blit(bot_img, (self.pixel_x, self.pixel_y))
 
 class NPC:
     def __init__(self, x, y, npc_type):
-        self.x, self.y = x, y
-        self.npc_type = npc_type
-        self.image = npc_imgs[npc_type]
+        self.x = x
+        self.y = y
+        self.pixel_x = x * TILE_SIZE
+        self.pixel_y = y * TILE_SIZE
+        self.target_x = self.pixel_x
+        self.target_y = self.pixel_y
+        self.speed = 4
         self.prev_pos = None
+        self.moving = False
+        self.npc_type = npc_type
+
+        # Animation
+        self.anim_frame = 0
+        self.anim_timer = 0
+        self.frame_interval = 10
+
+        self.image = self.get_image(idle=True)
+
+    def get_image(self, idle=False):
+        if self.npc_type == "normal":
+            if idle:
+                return npc_imgs["normal"]["idle"]
+            else:
+                return npc_imgs["normal"]["walk"][self.anim_frame % 2]
+        else:
+            return npc_imgs[self.npc_type]
 
     def move(self, trash_list):
+        if self.moving:
+            return
+
         def is_walkable(x, y):
             return (0 <= x < COLS and
                     0 <= y < ROWS and
                     tile_map[y][x] == "sidewalk")
 
-        # Collect all valid neighbors
         neighbors = []
-        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:  # Down, Right, Up, Left
+        for dx, dy in [(0,1), (1,0), (0,-1), (-1,0)]:
             nx, ny = self.x + dx, self.y + dy
             if is_walkable(nx, ny) and (nx, ny) != self.prev_pos:
                 neighbors.append((nx, ny))
 
-        # Randomly pick a valid neighbor
         if neighbors:
             self.prev_pos = (self.x, self.y)
             self.x, self.y = random.choice(neighbors)
+            self.target_x = self.x * TILE_SIZE
+            self.target_y = self.y * TILE_SIZE
+            self.moving = True
 
-        # Trash logic unchanged
-        if random.random() < 0.05:
-            if self.npc_type == "non-educated":
-                trash_list.append(Trash(self.x, self.y))
-            elif self.npc_type == "normal" and random.random() < 0.5:
-                trash_list.append(Trash(self.x, self.y))
+    def update(self):
+        if self.moving:
+            dx = self.target_x - self.pixel_x
+            dy = self.target_y - self.pixel_y
 
-        return True
+            if abs(dx) <= self.speed and abs(dy) <= self.speed:
+                self.pixel_x = self.target_x
+                self.pixel_y = self.target_y
+                self.moving = False
+                if self.npc_type == "normal":
+                    self.image = self.get_image(idle=True)
+            else:
+                self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
+                self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
+
+                # Animate faster
+                if self.npc_type == "normal":
+                    self.anim_timer += 1
+                    if self.anim_timer >= self.frame_interval:
+                        self.anim_frame = (self.anim_frame + 1) % 2
+                        self.image = self.get_image(idle=False)
+                        self.anim_timer = 0
 
     def draw(self):
-        screen.blit(self.image, (self.x * TILE_SIZE, self.y * TILE_SIZE))
+        screen.blit(self.image, (self.pixel_x, self.pixel_y))
         
 # Game state
 trashes = []
@@ -222,31 +280,31 @@ for _ in range(3):  # Place 3 NPCs
     npcs.append(generate_npc())
 
 # Game loop
+# Game loop
 clock = pygame.time.Clock()
 running = True
 
 while running:
     screen.fill(WHITE)
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-    # Update NPCs
-    for npc in npcs[:]:
-        if not npc.move(trashes):  # If NPC leaves the frame, remove it
-            npcs.remove(npc)
-            npcs.append(generate_npc())  # Generate a new NPC
+    # Move and update
+    for npc in npcs:
+        npc.move(trashes)
+        npc.update()
 
-    # Update bots
     for bot in bots:
         bot.move(trashes)
+        bot.update(trashes)
 
-    # Draw tiles
+    # Draw everything
     for y in range(ROWS):
         for x in range(COLS):
             draw_tile(x, y)
 
-    # Draw game objects
     for trash in trashes:
         trash.draw()
     for bot in bots:
@@ -255,7 +313,7 @@ while running:
         npc.draw()
 
     pygame.display.flip()
-    clock.tick(1)
+    clock.tick(30)  
 
 pygame.quit()
 sys.exit()
