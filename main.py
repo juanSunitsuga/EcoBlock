@@ -123,46 +123,58 @@ class Bot:
         self.target_x = self.pixel_x
         self.target_y = self.pixel_y
         self.speed = 4
-        self.prev_pos = None
         self.moving = False
 
+    def bfs(self, start, target, is_walkable):
+        """Perform BFS to find the shortest path to the target."""
+        queue = [(start, [])]  # (current_position, path)
+        visited = set()
+
+        while queue:
+            (current_x, current_y), path = queue.pop(0)
+            if (current_x, current_y) in visited:
+                continue
+            visited.add((current_x, current_y))
+
+            # If we reach the target, return the path
+            if (current_x, current_y) == target:
+                return path
+
+            # Explore neighbors
+            for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                nx, ny = current_x + dx, current_y + dy
+                if is_walkable(nx, ny) and (nx, ny) not in visited:
+                    queue.append(((nx, ny), path + [(nx, ny)]))
+
+        return None  # No path found
+
     def move(self, trash_list):
+        # Do nothing if there is no trash
+        if not trash_list:
+            return
+
         if self.moving:
             return
 
-        neighbors = []
-        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-            nx, ny = self.x + dx, self.y + dy
-            if 0 <= nx < COLS and 0 <= ny < ROWS:
-                if tile_map[ny][nx] == "sidewalk" and (nx, ny) != self.prev_pos:
-                    neighbors.append((nx, ny))
+        def is_walkable(x, y):
+            return 0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] == "sidewalk"
 
-        if neighbors:
-            target = trash_list[0] if trash_list else None
-            if target:
-                cur_dist = abs(self.x - target.x) + abs(self.y - target.y)
-                closer_steps = [
-                    (nx, ny) for (nx, ny) in neighbors
-                    if abs(nx - target.x) + abs(ny - target.y) < cur_dist
-                ]
-                if closer_steps:
-                    next_x, next_y = random.choice(closer_steps)
-                else:
-                    next_x, next_y = random.choice(neighbors)
-            else:
-                next_x, next_y = random.choice(neighbors)
+        # Find the nearest trash using BFS
+        target = trash_list[0]
+        path = self.bfs((self.x, self.y), (target.x, target.y), is_walkable)
 
+        if path:
+            next_x, next_y = path[0]  # Take the first step in the path
             self.prev_pos = (self.x, self.y)
             self.x, self.y = next_x, next_y
 
-            if trash_list and self.x == target.x and self.y == target.y:
+            # If we reach the trash, remove it
+            if self.x == target.x and self.y == target.y:
                 trash_list.remove(target)
 
             self.target_x = self.x * TILE_SIZE
             self.target_y = self.y * TILE_SIZE
             self.moving = True
-
-        return True
 
     def update(self, trash_list):
         if self.moving:
@@ -242,7 +254,7 @@ class NPC:
             self.target_y = self.y * TILE_SIZE
             self.moving = True
 
-    def update(self):
+    def update(self, trash_list):
         if self.moving:
             dx = self.target_x - self.pixel_x
             dy = self.target_y - self.pixel_y
@@ -263,6 +275,13 @@ class NPC:
                         self.anim_timer = 0
         elif self.npc_type == "normal":
             self.image = self.get_image()
+
+         # Throw trash based on type
+            if random.random() < 0.05:
+                if self.npc_type == "non-educated":
+                    trash_list.append(Trash(self.x, self.y))
+                elif self.npc_type == "normal" and random.random() < 0.5:
+                    trash_list.append(Trash(self.x, self.y))
 
         return True
 
@@ -306,7 +325,7 @@ while running:
 
     for npc in npcs:
         npc.move(trashes)
-        npc.update()
+        npc.update(trashes)
 
     for bot in bots:
         bot.move(trashes)
