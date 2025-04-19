@@ -168,9 +168,10 @@ class Bot:
             self.prev_pos = (self.x, self.y)
             self.x, self.y = next_x, next_y
 
-            # If we reach the trash, remove it
-            if self.x == target.x and self.y == target.y:
-                trash_list.remove(target)
+            # Check for trash at the current position and remove it
+            for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
+                if self.x == trash.x and self.y == trash.y:
+                    trash_list.remove(trash)
 
             self.target_x = self.x * TILE_SIZE
             self.target_y = self.y * TILE_SIZE
@@ -184,10 +185,11 @@ class Bot:
                 self.pixel_x = self.target_x
                 self.pixel_y = self.target_y
                 self.moving = False
-                for t in trash_list:
-                    if self.x == t.x and self.y == t.y:
-                        trash_list.remove(t)
-                        break
+
+                # Check for trash at the current position and remove it
+                for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
+                    if self.x == trash.x and self.y == trash.y:
+                        trash_list.remove(trash)
             else:
                 self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
                 self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
