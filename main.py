@@ -261,6 +261,12 @@ class NPC:
             self.target_y = self.y * TILE_SIZE
             self.moving = True
 
+            # Educated NPC picks up trash at the new position
+            if self.npc_type == "educated":
+                for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
+                    if self.x == trash.x and self.y == trash.y:
+                        trash_list.remove(trash)
+
     def update(self, trash_list):
         if self.moving:
             dx = self.target_x - self.pixel_x
@@ -313,8 +319,12 @@ def generate_npc():
             x, y = COLS - 1, random.randint(0, ROWS - 1)
 
         if tile_map[y][x] == "sidewalk":
-            npc_type = random.choice(["educated", "normal", "non-educated"])
+            if not any(npc.npc_type == "educated" for npc in npcs):
+                npc_type = "educated"
+            else:
+                npc_type = random.choice(["educated", "normal", "non-educated"])
             return NPC(x, y, npc_type)
+
 
 for _ in range(3):
     npcs.append(generate_npc())
