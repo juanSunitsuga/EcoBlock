@@ -68,7 +68,6 @@ def generate_maze():
 generate_maze()
 
 # Place houses adjacent to sidewalks
-# Place houses adjacent to sidewalks
 def place_houses():
     for _ in range(10):  # Place 10 houses
         while True:
@@ -83,18 +82,6 @@ def place_houses():
 
 place_houses()
 
-# Draw tile based on type
-def draw_tile(x, y):
-    tile_type = tile_map[y][x]
-    if tile_type == "grass":
-        screen.blit(grass_img, (x * TILE_SIZE, y * TILE_SIZE))
-    elif tile_type == "sidewalk":
-        screen.blit(sidewalk_img, (x * TILE_SIZE, y * TILE_SIZE))
-    elif tile_type == "house":
-        screen.blit(grass_img, (x * TILE_SIZE, y * TILE_SIZE))
-        screen.blit(house_img, (x * TILE_SIZE, y * TILE_SIZE))
-
-# The rest of the code remains unchanged...
 # Draw tile based on type
 def draw_tile(x, y):
     tile_type = tile_map[y][x]
@@ -139,25 +126,21 @@ class Bot:
     def draw(self):
         screen.blit(bot_img, (self.x * TILE_SIZE, self.y * TILE_SIZE))
 
-
 class NPC:
     def __init__(self, x, y, npc_type):
         self.x = x
         self.y = y
-        self.direction = random.choice(["horizontal", "vertical"])
         self.npc_type = npc_type
         self.image = npc_imgs[npc_type]
 
     def move(self, trash_list):
-        # Move NPC along sidewalks
-        if self.direction == "horizontal":
-            self.x += random.choice([-1, 1])
-        elif self.direction == "vertical":
-            self.y += random.choice([-1, 1])
+        # Move NPC along sidewalks in all four directions
+        direction = random.choice([(0, 1), (1, 0), (0, -1), (-1, 0)])  # Down, Right, Up, Left
+        new_x, new_y = self.x + direction[0], self.y + direction[1]
 
-        # Check if NPC is leaving the frame
-        if self.x < 0 or self.x >= COLS or self.y < 0 or self.y >= ROWS or tile_map[self.y][self.x] != "sidewalk":
-            return False  # Mark NPC for removal
+        # Ensure NPC stays on sidewalks
+        if 0 <= new_x < COLS and 0 <= new_y < ROWS and tile_map[new_y][new_x] == "sidewalk":
+            self.x, self.y = new_x, new_y
 
         # Throw trash based on type
         if random.random() < 0.05:
@@ -170,7 +153,6 @@ class NPC:
 
     def draw(self):
         screen.blit(self.image, (self.x * TILE_SIZE, self.y * TILE_SIZE))
-
 
 # Game state
 trashes = []
