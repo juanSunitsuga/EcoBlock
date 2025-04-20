@@ -313,6 +313,18 @@ class NPC:
 
             if shortest_path:
                 next_x, next_y = shortest_path[0]
+
+                dx = next_x - self.x
+                dy = next_y - self.y
+                if dx == 1:
+                    self.direction = "east"
+                elif dx == -1:
+                    self.direction = "west"
+                elif dy == 1:
+                    self.direction = "south"
+                elif dy == -1:
+                    self.direction = "north"
+                    
                 self.prev_pos = (self.x, self.y)
                 self.x, self.y = next_x, next_y
 
