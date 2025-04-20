@@ -114,12 +114,6 @@ npc_imgs = {
     }
 }
 
-npc_list = [
-    {"name": "Normal NPC", "level": 10, "location": "Alley", "type": "normal", "upgrade_button": None},
-    {"name": "Uneducated NPC 1", "level": 7, "location": "Street", "type": "non-educated", "upgrade_button": None},
-    {"name": "Uneducated NPC 2", "level": 6, "location": "Square", "type": "non-educated", "upgrade_button": None},
-]
-
 tile_map = [["grass" for _ in range(COLS)] for _ in range(ROWS)]
 
 class TrashBin:
@@ -304,13 +298,13 @@ class NPC:
         self.pixel_y = y * TILE_SIZE
         self.target_x = self.pixel_x
         self.target_y = self.pixel_y
-        self.speed = 4
+        self.speed = 3
         self.prev_pos = None
         self.moving = False
         self.direction = "south"  # Default direction
         self.anim_frame = 0
         self.anim_timer = 0
-        self.frame_interval = 6
+        self.frame_interval = 5
         self.capacity = 3 if npc_type == "educated" else 0  # Educated NPCs have a capacity
         self.current_trash = 0  # Current trash count
         self.returning_to_bin = False  # Whether the NPC is returning to a trash bin
@@ -411,7 +405,6 @@ class NPC:
                 self.prev_pos = (self.x, self.y)
                 self.x, self.y = next_x, next_y
                 
-                
 
                 # Pick up the trash if at the same position
                 for trash in trash_list[:]:
@@ -494,10 +487,19 @@ class NPC:
 
          # Throw trash based on type
         if random.random() < 0.02:
+            should_throw = False
             if self.npc_type == "non-educated":
-                trash_list.append(Trash(self.x, self.y))
+                should_throw = True
             elif self.npc_type == "normal" and random.random() < 0.5:
-                trash_list.append(Trash(self.x, self.y))
+                should_throw = True
+
+            if should_throw:
+                # Check if this tile is a trash bin
+                is_bin_tile = any(bin.x == self.x and bin.y == self.y for bin in bins)
+
+                # Only add trash if it's not thrown into a bin
+                if not is_bin_tile:
+                    trash_list.append(Trash(self.x, self.y))
 
         return True
 
@@ -531,7 +533,9 @@ def generate_npc(npc_type):
             x, y = COLS - 1, random.randint(0, ROWS - 1)
 
         if tile_map[y][x] == "sidewalk":
-            return NPC(x, y, npc_type)
+            npc = NPC(x, y, npc_type)
+            npc.level = 0  # Set the level to 0 regardless of type
+            return npc
 
 
 for _ in range(1):
@@ -590,7 +594,7 @@ def draw_menu():
         # Update the button rect in the NPC dictionary
         npc["upgrade_button"] = upgrade_button_rect
         y_offset += 80  # Move to the next NPC
-            
+
 def display_stats(money, bot_capacity, bot_current_trash):
     font = pygame.font.SysFont(None, 36)  # Font size 36
     # Display money
@@ -622,6 +626,18 @@ def check_game_completion():
         pygame.quit()
         sys.exit()
 
+def update_npc_list():
+    global npc_list
+    npc_list = []
+    for npc in npcs:
+        npc_list.append({
+            "name": f"{npc.npc_type.capitalize()} NPC",
+            "level": npc.level,
+            "location": f"({npc.x}, {npc.y})",
+            "type": npc.npc_type,
+            "upgrade_button": None  # This will be updated in the menu
+        })
+
 while running:
     # Handle player input for the bot
     keys = pygame.key.get_pressed()
@@ -644,15 +660,24 @@ while running:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_TAB:  # Toggle the menu with the Tab key
                 menu_open = not menu_open
-
-            # Handle NPC upgrades
-            if menu_open:
-                for npc in npc_list:
-                    if npc["upgrade_button"] and money >= 20:
-                        money -= 20
-                        npc["level"] += 1
+        elif event.type == pygame.MOUSEBUTTONDOWN and menu_open:
+            mouse_pos = pygame.mouse.get_pos()
+            for npc in npc_list:
+                if npc["upgrade_button"] and npc["upgrade_button"].collidepoint(mouse_pos):
+                    if money >= 20:  # Check if the player has enough money
+                        money -= 20  # Deduct the upgrade cost
+                        npc["level"] += 1  # Increase the NPC's level
+                        # Upgrade the NPC type if applicable
                         if npc["type"] == "non-educated" and npc["level"] >= 10:
                             npc["type"] = "educated"
+
+                        # Synchronize the level and type with the corresponding NPC in the npcs list
+                        for actual_npc in npcs:
+                            if actual_npc.x == int(npc["location"].strip("()").split(", ")[0]) and \
+                               actual_npc.y == int(npc["location"].strip("()").split(", ")[1]):
+                                actual_npc.level = npc["level"]
+                                actual_npc.npc_type = npc["type"]
+                                break
 
     # Draw the game world
     for y in range(ROWS):
@@ -675,6 +700,9 @@ while running:
             npc.move(trashes, bins)
             npc.update(trashes)
         player_bot.update(trashes, bins)
+
+        # Synchronize npc_list with the current state of npcs
+        update_npc_list()
 
         # Display money and bot capacity
         display_stats(money, player_bot.capacity, player_bot.current_trash)
