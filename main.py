@@ -671,9 +671,21 @@ while running:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_TAB:  # Toggle the menu with the Tab key
                 menu_open = not menu_open
+            elif event.key == pygame.K_1:  # Upgrade capacity
+                if money >= capacity_upgrade_cost:
+                    money -= capacity_upgrade_cost
+                    player_bot.capacity += 1  # Increase bot capacity
+            elif event.key == pygame.K_2:  # Upgrade speed
+                if money >= speed_upgrade_cost:
+                    money -= speed_upgrade_cost
+                    player_bot.speed += 1  # Increase bot speed
         elif event.type == pygame.MOUSEBUTTONDOWN and menu_open:
             mouse_pos = pygame.mouse.get_pos()
             for npc in npc_list:
+                if npc["upgrade_button"] and npc["upgrade_button"].collidepoint(mouse_pos):
+                    # Check if the NPC is already "educated" and at max level
+                    if npc["type"] == "educated" and npc["level"] >= 10:
+                        continue  # Skip further processing for this NPC
                 if npc["upgrade_button"] and npc["upgrade_button"].collidepoint(mouse_pos):
                     if money >= 20:  # Check if the player has enough money
                         money -= 20  # Deduct the upgrade cost
