@@ -457,6 +457,8 @@ class NPC:
 
 # Game state
 money = 0  # Initialize money to 0
+capacity_upgrade_cost = 10  # Cost to upgrade capacity
+speed_upgrade_cost = 15    # Cost to upgrade speed
 trashes = []
 bots = [Bot(1, 1)]
 npcs = []
@@ -504,6 +506,15 @@ def display_stats(money, bot_capacity, bot_current_trash):
     capacity_surface = font.render(capacity_text, True, (0, 0, 0))  # Black text
     screen.blit(capacity_surface, (10, 50))  # Below the money text
 
+    # Display upgrade instructions at the bottom-left corner
+    upgrade_text = f"[1] (${capacity_upgrade_cost}) to upgrade capacity"
+    upgrade_surface = font.render(upgrade_text, True, (0, 0, 0))  # Black text
+    screen.blit(upgrade_surface, (10, HEIGHT - 50))  # Bottom-left corner
+    
+    upgrade_text = f"[2] (${speed_upgrade_cost}) to upgrade speed"
+    upgrade_surface = font.render(upgrade_text, True, (0, 0, 0))  # Black text
+    screen.blit(upgrade_surface, (10, HEIGHT - 25))  # Bottom-left corner
+
 while running:
     screen.fill(WHITE)
 
@@ -521,6 +532,18 @@ while running:
         player_bot.move("left", is_walkable)
     elif keys[pygame.K_RIGHT]:
         player_bot.move("right", is_walkable)
+
+    # Upgrade capacity
+    if keys[pygame.K_1] and money >= capacity_upgrade_cost:
+        player_bot.capacity += 1  # Increase capacity
+        money -= capacity_upgrade_cost  # Deduct money
+        capacity_upgrade_cost += 5  # Increase the cost by $5
+
+    # Upgrade speed
+    if keys[pygame.K_2] and money >= speed_upgrade_cost:
+        player_bot.speed += 1  # Increase speed
+        money -= speed_upgrade_cost  # Deduct money
+        speed_upgrade_cost += 5  # Increase the cost by $5
 
     # Update and draw NPCs
     for npc in npcs:
