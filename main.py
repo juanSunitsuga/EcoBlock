@@ -109,11 +109,25 @@ class TrashBin:
         screen.blit(bin_img, (self.x * TILE_SIZE, self.y * TILE_SIZE))
 
 def generate_maze():
-    global tile_map
-    maze = generateMaze(ROWS, COLS)
-    for i in range(ROWS):
-        for j in range(COLS):
-            tile_map[i][j] = 'sidewalk' if maze[i][j] == 'c' else 'grass'
+    global tile_map, bins
+    bins = []  # List to store trash bins
+    try:
+        with open("maze.txt", "r") as file:
+            lines = file.readlines()
+            # Dynamically resize tile_map based on the maze dimensions
+            tile_map = [["grass" for _ in range(len(lines[0].strip().split()))] for _ in range(len(lines))]
+            for i, line in enumerate(lines):
+                for j, char in enumerate(line.strip().split()):
+                    if char == 'c':  # 'c' represents a sidewalk
+                        tile_map[i][j] = 'sidewalk'
+                    elif char == 'w':  # 'w' represents grass
+                        tile_map[i][j] = 'grass'
+                    elif char == 'u':  # 'u' represents a trash bin
+                        tile_map[i][j] = 'trash_bin'
+                        bins.append(TrashBin(j, i))  # Add the trash bin to the list
+    except FileNotFoundError:
+        print("Error: maze.txt not found. Please ensure the file exists in the same directory.")
+        sys.exit(1)
 
 generate_maze()
 
@@ -475,7 +489,7 @@ trashes = []
 bots = [Bot(1, 1)]
 npcs = []
 
-def generate_npc():
+def generate_npc(npc_type):
     while True:
         edge = random.choice([0, 1, 2, 3])
         if edge == 0:
@@ -488,15 +502,14 @@ def generate_npc():
             x, y = COLS - 1, random.randint(0, ROWS - 1)
 
         if tile_map[y][x] == "sidewalk":
-            if not any(npc.npc_type == "educated" for npc in npcs):
-                npc_type = "educated"
-            else:
-                npc_type = random.choice(["educated", "normal", "non-educated"])
             return NPC(x, y, npc_type)
 
 
-for _ in range(3):
-    npcs.append(generate_npc())
+for _ in range(1):
+    npcs.append(generate_npc("non-educated"))
+
+for _ in range(2):
+    npcs.append(generate_npc("normal"))
 
 # Game loop
 clock = pygame.time.Clock()

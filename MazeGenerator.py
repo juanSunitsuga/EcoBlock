@@ -6,7 +6,7 @@ import random
 
 # Constants
 TILE_SIZE = 64
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 832, 640
 ROWS, COLS = HEIGHT // TILE_SIZE, WIDTH // TILE_SIZE
 
 wall = 'w'
