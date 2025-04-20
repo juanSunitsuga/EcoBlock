@@ -513,7 +513,7 @@ class NPC:
             text_rect = text_surface.get_rect(center=(self.pixel_x + TILE_SIZE // 2, self.pixel_y - 10))
 
 # Game state
-money = 0  # Initialize money to 0
+money = 100000  # Initialize money to 0
 capacity_upgrade_cost = 10  # Cost to upgrade capacity
 speed_upgrade_cost = 15    # Cost to upgrade speed
 trashes = []
@@ -669,7 +669,13 @@ while running:
                         npc["level"] += 1  # Increase the NPC's level
                         # Upgrade the NPC type if applicable
                         if npc["type"] == "non-educated" and npc["level"] >= 10:
+                            npc["type"] = "normal"
+                            npc["level"] = 0  
+                            menu_open = not menu_open
+                        elif npc["type"] == "normal" and npc["level"] >= 10:
                             npc["type"] = "educated"
+                            npc["level"] = 10
+                            menu_open = not menu_open
 
                         # Synchronize the level and type with the corresponding NPC in the npcs list
                         for actual_npc in npcs:
