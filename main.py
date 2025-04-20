@@ -607,7 +607,7 @@ def draw_menu():
         npc["upgrade_button"] = upgrade_button_rect
         y_offset += 80  # Move to the next NPC
 
-def display_stats(money, bot_capacity, bot_current_trash):
+def display_stats(money, bot_capacity, bot_current_trash, start_time, trash_count):
     font = pygame.font.SysFont(None, 28)  # Reduced font size to 28
 
     # Helper function to draw text with an outline
@@ -620,13 +620,27 @@ def display_stats(money, bot_capacity, bot_current_trash):
         text_surface = font.render(text, True, color)
         screen.blit(text_surface, (x, y))
 
+    # Calculate the right-side position
+    right_x = WIDTH - 200  # Adjust the X position for the right side
+
     # Display money in yellow with black outline
     money_text = f"Money: ${money}"
     draw_text_with_outline(money_text, font, (255, 255, 0), (0, 0, 0), 10, 5)  # Adjusted position
 
     # Display bot capacity in white with black outline
-    capacity_text = f"Bot Capacity: {bot_current_trash}/{bot_capacity}"
+    capacity_text = f"Trash Capacity: {bot_current_trash}/{bot_capacity}"
     draw_text_with_outline(capacity_text, font, (255, 255, 255), (0, 0, 0), 10, 40)  # Adjusted position for better alignment
+
+    # Display timer in white with black outline
+    elapsed_time = int(time.time() - start_time)
+    minutes = elapsed_time // 60
+    seconds = elapsed_time % 60
+    timer_text = f"Time: {minutes:02}:{seconds:02}"
+    draw_text_with_outline(timer_text, font, (255, 255, 255), (0, 0, 0), right_x, 5)
+
+    # Display available trash count in white with black outline
+    trash_text = f"Trash Available: {trash_count}"
+    draw_text_with_outline(trash_text, font, (255, 255, 255), (0, 0, 0), right_x, 40)
 
     # Display instruction for upgrading NPCs
     tab_text = "Press [Tab] to upgrade NPC Education"
@@ -834,7 +848,7 @@ while running:
         update_npc_list()
 
         # Display money and bot capacity
-        display_stats(money, player_bot.capacity, player_bot.current_trash)
+        display_stats(money, player_bot.capacity, player_bot.current_trash, start_time, len(trashes))
 
         # Check for game completion
         check_game_completion()
