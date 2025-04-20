@@ -1,5 +1,6 @@
 import pygame
 import random
+import sys
 from MazeGenerator import generateMaze as _generate_maze_from_file
 
 # Constants
@@ -15,8 +16,10 @@ money = 100000
 capacity_upgrade_cost = 10
 speed_upgrade_cost = 15
 
-# --- Maze & Map Generation ---
 def generate_maze(path="maze.txt"):
+    """
+    Generates the game world by reading a maze file and initializing the tile map.
+    """
     global tile_map, ROWS, COLS
     try:
         lines = open(path).read().splitlines()
@@ -25,7 +28,8 @@ def generate_maze(path="maze.txt"):
         for y, line in enumerate(lines):
             for x, char in enumerate(line.split()):
                 tile_map[y][x] = 'sidewalk' if char == 'c' else 'grass'
-        _generate_maze_from_file(path)
+        # Pass ROWS and COLS as positional arguments to the maze generator
+        _generate_maze_from_file(COLS, ROWS)
     except FileNotFoundError:
         print(f"Error: {path} not found.")
         pygame.quit()

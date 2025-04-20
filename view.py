@@ -43,6 +43,9 @@ def load_assets(path="assets/"):
         }
     }
 
+    # Debug print to confirm bot images are loaded
+    print("Bot images loaded:", _assets["bot"])
+
     # Load NPC images
     _assets["npc"] = {
         "educated": {

@@ -1,7 +1,7 @@
 import pygame
 import sys
 from model import generate_maze, place_houses, place_trash_bins, Bot, npcs, bins, trashes
-from view import load_assets, draw_map, draw_entities, draw_menu, display_stats
+from view import load_assets, draw_map, draw_entities, draw_menu, display_stats, _assets
 from controller import handle_input, update_entities, is_walkable, update_npc_list, check_game_completion
 
 # Constants
@@ -17,13 +17,18 @@ def main():
     # Load assets
     load_assets()
 
+    # Verify that bot images are loaded
+    if "bot" not in _assets:
+        print("Error: Bot images not loaded into _assets.")
+        sys.exit(1)
+
     # Initialize the game world
     generate_maze()
     place_houses()
     bins.extend(place_trash_bins())
 
     # Create the player-controlled bot
-    player_bot = Bot(1, 1, images=None)  # TODO: Pass bot sprite dictionary
+    player_bot = Bot(1, 1, images=_assets['bot'])  # Pass the bot sprite dictionary
 
     # Game loop variables
     clock = pygame.time.Clock()
