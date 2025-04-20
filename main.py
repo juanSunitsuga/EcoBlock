@@ -506,6 +506,7 @@ for _ in range(2):
 
 # Game loop
 clock = pygame.time.Clock()
+FRAME_RATE = 30 # Set a consistent frame rate
 running = True
 player_bot = Bot(1, 1)  # Initialize the player-controlled bot
 menu_button_rect = pygame.Rect(WIDTH - 150, 10, 140, 40)  # Button dimensions
@@ -515,34 +516,44 @@ def is_walkable(x, y):
     return 0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] in ["sidewalk", "trash_bin"]
 
 def draw_menu():
-    # Draw the menu button
-    pygame.draw.rect(screen, (200, 200, 200), menu_button_rect)  # Light gray button
+    # Draw a semi-transparent gray overlay on the background
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)  # Allow transparency
+    overlay.fill((50, 50, 50, 150))  # RGBA: Dark gray with 150 alpha (transparency)
+    screen.blit(overlay, (0, 0))
+
+    # Draw the menu background
+    menu_width, menu_height = WIDTH - 200, HEIGHT - 200  # Slightly smaller menu size
+    menu_bg_rect = pygame.Rect(100, 100, menu_width, menu_height)
+    pygame.draw.rect(screen, (50, 50, 50), menu_bg_rect)  # Dark gray background
+    pygame.draw.rect(screen, (255, 255, 255), menu_bg_rect, 2)  # White border
+
     font = pygame.font.SysFont(None, 24)
-    button_text = font.render("NPC Menu", True, (0, 0, 0))  # Black text
-    screen.blit(button_text, (menu_button_rect.x + 20, menu_button_rect.y + 10))
 
-    # Draw the NPC list if the menu is open
-    if menu_open:
-        menu_bg_rect = pygame.Rect(WIDTH - 300, 60, 280, 400)  # Background for the menu
-        pygame.draw.rect(screen, (50, 50, 50), menu_bg_rect)  # Dark gray background
-        pygame.draw.rect(screen, (255, 255, 255), menu_bg_rect, 2)  # White border
+    # Draw the title
+    title_text = font.render("NPC Menu", True, (255, 255, 255))  # White text
+    screen.blit(title_text, (menu_bg_rect.x + menu_width // 2 - 50, menu_bg_rect.y + 20))  # Centered title
 
-        # Draw NPC details and upgrade buttons
-        y_offset = 70
-        for npc in npc_list:
-            npc_text = f"{npc['name']} (Lv. {npc['level']}) - {npc['location']} ({npc['type']})"
-            npc_surface = font.render(npc_text, True, (255, 255, 255))  # White text
-            screen.blit(npc_surface, (WIDTH - 290, y_offset))
+    # Draw NPC details and images
+    y_offset = menu_bg_rect.y + 60
+    for npc in npc_list:
+        # Draw NPC image
+        npc_image = npc_imgs[npc["type"]]["walk"]["south"][0]  # Use the south-facing image
+        screen.blit(npc_image, (menu_bg_rect.x + 20, y_offset))  # Display image on the left
 
-            # Draw upgrade button
-            upgrade_button_rect = pygame.Rect(WIDTH - 150, y_offset, 100, 30)
-            pygame.draw.rect(screen, (100, 200, 100), upgrade_button_rect)  # Green button
-            upgrade_text = font.render("Upgrade", True, (0, 0, 0))  # Black text
-            screen.blit(upgrade_text, (upgrade_button_rect.x + 10, upgrade_button_rect.y + 5))
+        # Draw NPC details
+        npc_text = f"{npc['name']} (Lv. {npc['level']}) - {npc['location']}"
+        npc_surface = font.render(npc_text, True, (255, 255, 255))  # White text
+        screen.blit(npc_surface, (menu_bg_rect.x + 100, y_offset + 10))  # Display text next to the image
 
-            # Update the button rect in the NPC dictionary
-            npc["upgrade_button"] = upgrade_button_rect
-            y_offset += 40
+        # Draw upgrade button
+        upgrade_button_rect = pygame.Rect(menu_bg_rect.x + menu_width - 170, y_offset, 150, 40)
+        pygame.draw.rect(screen, (100, 200, 100), upgrade_button_rect)  # Green button
+        upgrade_text = font.render("Upgrade", True, (0, 0, 0))  # Black text
+        screen.blit(upgrade_text, (upgrade_button_rect.x + 20, upgrade_button_rect.y + 10))
+
+        # Update the button rect in the NPC dictionary
+        npc["upgrade_button"] = upgrade_button_rect
+        y_offset += 80  # Move to the next NPC
             
 def display_stats(money, bot_capacity, bot_current_trash):
     font = pygame.font.SysFont(None, 36)  # Font size 36
@@ -576,73 +587,71 @@ def check_game_completion():
         sys.exit()
 
 while running:
+    # Handle player input for the bot
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_w]:
+        player_bot.move("up", is_walkable)
+    elif keys[pygame.K_s]:
+        player_bot.move("down", is_walkable)
+    elif keys[pygame.K_a]:
+        player_bot.move("left", is_walkable)
+    elif keys[pygame.K_d]:
+        player_bot.move("right", is_walkable)
+    screen.fill(WHITE)
+
     screen.fill(WHITE)
 
     # Handle events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if menu_button_rect.collidepoint(event.pos):
-                menu_open = not menu_open  # Toggle the menu
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_TAB:  # Toggle the menu with the Tab key
+                menu_open = not menu_open
 
             # Handle NPC upgrades
             if menu_open:
                 for npc in npc_list:
-                    if npc["upgrade_button"] and npc["upgrade_button"].collidepoint(event.pos) and money >= 20:
+                    if npc["upgrade_button"] and money >= 20:
                         money -= 20
                         npc["level"] += 1
                         if npc["type"] == "non-educated" and npc["level"] >= 10:
                             npc["type"] = "educated"
-
-    
-
-    # Handle player input for the bot
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_UP]:
-        player_bot.move("up", is_walkable)
-    elif keys[pygame.K_DOWN]:
-        player_bot.move("down", is_walkable)
-    elif keys[pygame.K_LEFT]:
-        player_bot.move("left", is_walkable)
-    elif keys[pygame.K_RIGHT]:
-        player_bot.move("right", is_walkable)
-
-    # Update and draw NPCs
-    for npc in npcs:
-        npc.move(trashes, bins)
-        npc.update(trashes)
-
-    # Update and draw the player-controlled bot
-    player_bot.update(trashes, bins)
 
     # Draw the game world
     for y in range(ROWS):
         for x in range(COLS):
             draw_tile(x, y)
 
-    # Draw trash bins
     for trash_bin in bins:
         trash_bin.draw()
 
-    # Draw other game objects
     for trash in trashes:
         trash.draw()
     player_bot.draw()
     for npc in npcs:
         npc.draw()
 
-    # Draw the menu button and NPC list
-    draw_menu()
+    # Pause game logic if the menu is open
+    if not menu_open:
+        # Update NPCs and the bot
+        for npc in npcs:
+            npc.move(trashes, bins)
+            npc.update(trashes)
+        player_bot.update(trashes, bins)
 
-    # Display money and bot capacity
-    display_stats(money, player_bot.capacity, player_bot.current_trash)
+        # Display money and bot capacity
+        display_stats(money, player_bot.capacity, player_bot.current_trash)
 
-    # Check for game completion
-    check_game_completion()
+        # Check for game completion
+        check_game_completion()
+    else:
+        # Draw the NPC menu
+        draw_menu()
 
+    # Maintain a consistent frame rate
     pygame.display.flip()
-    clock.tick(30)
+    clock.tick(FRAME_RATE)
 
 pygame.quit()
 sys.exit()
