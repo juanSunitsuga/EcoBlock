@@ -2,6 +2,7 @@
 import pygame
 import sys
 import random
+import time
 from MazeGenerator import generateMaze  # Import the generateMaze function
 
 pygame.init()
@@ -524,7 +525,7 @@ class NPC:
             text_rect = text_surface.get_rect(center=(self.pixel_x + TILE_SIZE // 2, self.pixel_y - 10))
 
 # Game state
-money = 100000  # Initialize money to 0
+money = 20  # Initialize money to 20
 capacity_upgrade_cost = 10  # Cost to upgrade capacity
 speed_upgrade_cost = 15    # Cost to upgrade speed
 trashes = []
@@ -607,35 +608,134 @@ def draw_menu():
         y_offset += 80  # Move to the next NPC
 
 def display_stats(money, bot_capacity, bot_current_trash):
-    font = pygame.font.SysFont(None, 36)  # Font size 36
-    # Display money
+    font = pygame.font.SysFont(None, 28)  # Reduced font size to 28
+
+    # Helper function to draw text with an outline
+    def draw_text_with_outline(text, font, color, outline_color, x, y):
+        # Render the outline by drawing the text in 8 surrounding directions
+        outline_surface = font.render(text, True, outline_color)
+        for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1), (0, -1), (0, 1), (-1, 0), (1, 0)]:
+            screen.blit(outline_surface, (x + dx, y + dy))
+        # Render the main text
+        text_surface = font.render(text, True, color)
+        screen.blit(text_surface, (x, y))
+
+    # Display money in yellow with black outline
     money_text = f"Money: ${money}"
-    money_surface = font.render(money_text, True, (0, 0, 0))  # Black text
-    screen.blit(money_surface, (10, 10))  # Top-left corner
+    draw_text_with_outline(money_text, font, (255, 255, 0), (0, 0, 0), 10, 5)  # Adjusted position
 
-    # Display bot capacity
+    # Display bot capacity in white with black outline
     capacity_text = f"Bot Capacity: {bot_current_trash}/{bot_capacity}"
-    capacity_surface = font.render(capacity_text, True, (0, 0, 0))  # Black text
-    screen.blit(capacity_surface, (10, 50))  # Below the money text
+    draw_text_with_outline(capacity_text, font, (255, 255, 255), (0, 0, 0), 10, 40)  # Adjusted position for better alignment
 
-    # Display upgrade instructions at the bottom-left corner
-    upgrade_text = f"[1] (${capacity_upgrade_cost}) to upgrade capacity"
-    upgrade_surface = font.render(upgrade_text, True, (0, 0, 0))  # Black text
-    screen.blit(upgrade_surface, (10, HEIGHT - 50))  # Bottom-left corner
+    # Display instruction for upgrading NPCs
+    tab_text = "Press [Tab] to upgrade NPC Education"
+    draw_text_with_outline(tab_text, font, (255, 255, 255), (0, 0, 0), 10, HEIGHT - 60)  # Adjusted position
+
+    # Display upgrade instructions in white with black outline
+    upgrade_text_1 = f"[1] (${capacity_upgrade_cost}) to upgrade capacity"
+    draw_text_with_outline(upgrade_text_1, font, (255, 255, 255), (0, 0, 0), 10, HEIGHT - 40)
+
+    upgrade_text_2 = f"[2] (${speed_upgrade_cost}) to upgrade speed"
+    draw_text_with_outline(upgrade_text_2, font, (255, 255, 255), (0, 0, 0), 10, HEIGHT - 20)
     
-    upgrade_text = f"[2] (${speed_upgrade_cost}) to upgrade speed"
-    upgrade_surface = font.render(upgrade_text, True, (0, 0, 0))  # Black text
-    screen.blit(upgrade_surface, (10, HEIGHT - 25))  # Bottom-left corner
+# Load the star image
+star_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "star.png"), (50, 50))
 
 def check_game_completion():
+    global running
     if not trashes and all(npc["type"] == "educated" for npc in npc_list):
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
+
+        # Determine star rating based on time
+        if elapsed_time <= 7 * 60:  # Less than or equal to 7 minutes
+            stars = 5
+        elif elapsed_time <= 10 * 60:  # Less than or equal to 10 minutes
+            stars = 4
+        elif elapsed_time <= 15 * 60:  # Less than or equal to 15 minutes
+            stars = 3
+        elif elapsed_time <= 20 * 60:  # Less than or equal to 20 minutes
+            stars = 2
+        else:
+            stars = 1
+
+        # Display the completion screen
         font = pygame.font.SysFont(None, 48)
         win_text = font.render("Congratulations! All NPCs are educated!", True, (0, 255, 0))  # Green text
-        screen.blit(win_text, (WIDTH // 2 - 300, HEIGHT // 2))
+        time_text = font.render(f"Time: {minutes}m {seconds}s", True, (255, 255, 255))  # White text
+
+        # Draw the texts on the screen
+        screen.fill(BLACK)
+        screen.blit(win_text, (WIDTH // 2 - 300, HEIGHT // 2 - 100))
+        screen.blit(time_text, (WIDTH // 2 - 100, HEIGHT // 2 - 40))
+
+        # Draw stars based on the rating
+        for i in range(5):
+            if i < stars:
+                screen.blit(star_img, (WIDTH // 2 - 125 + i * 60, HEIGHT // 2 + 20))  # Filled star
+            else:
+                # Draw an empty star (optional: use a different image or dim the star)
+                empty_star = pygame.Surface((50, 50), pygame.SRCALPHA)
+                pygame.draw.circle(empty_star, (100, 100, 100, 100), (25, 25), 25)  # Gray circle
+                screen.blit(empty_star, (WIDTH // 2 - 125 + i * 60, HEIGHT // 2 + 20))
+
         pygame.display.flip()
         pygame.time.wait(5000)  # Wait for 5 seconds
-        pygame.quit()
-        sys.exit()
+        running = False  # Stop the game loop
+
+# Start time of the game
+start_time = time.time()
+
+def check_game_completion():
+    global running
+    if not trashes and all(npc["type"] == "educated" for npc in npc_list):
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
+
+        # Determine star rating based on time
+        if elapsed_time <= 7 * 60:  # Less than or equal to 7 minutes
+            stars = 5
+        elif elapsed_time <= 10 * 60:  # Less than or equal to 10 minutes
+            stars = 4
+        elif elapsed_time <= 15 * 60:  # Less than or equal to 15 minutes
+            stars = 3
+        elif elapsed_time <= 20 * 60:  # Less than or equal to 20 minutes
+            stars = 2
+        else:
+            stars = 1
+
+        # Create a semi-transparent overlay
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)  # Allow transparency
+        overlay.fill((0, 0, 0, 150))  # RGBA: Black with 150 alpha (transparency)
+        screen.blit(overlay, (0, 0))
+
+        # Display the completion screen
+        font = pygame.font.SysFont(None, 48)
+        win_text = font.render("Congratulations! All NPCs are educated!", True, (0, 255, 0))  # Green text
+        time_text = font.render(f"Time: {minutes}m {seconds}s", True, (255, 255, 255))  # White text
+
+        # Draw the texts on the screen
+        screen.blit(win_text, (WIDTH // 2 - 300, HEIGHT // 2 - 100))
+        screen.blit(time_text, (WIDTH // 2 - 100, HEIGHT // 2 - 40))
+
+        # Draw stars based on the rating
+        for i in range(5):
+            if i < stars:
+                screen.blit(star_img, (WIDTH // 2 - 125 + i * 60, HEIGHT // 2 + 20))  # Filled star
+            else:
+                # Draw an empty star (optional: use a different image or dim the star)
+                empty_star = pygame.Surface((50, 50), pygame.SRCALPHA)
+                pygame.draw.circle(empty_star, (100, 100, 100, 100), (25, 25), 25)  # Gray circle
+                screen.blit(empty_star, (WIDTH // 2 - 125 + i * 60, HEIGHT // 2 + 20))
+
+        pygame.display.flip()
+        pygame.time.wait(5000)  # Wait for 5 seconds
+        running = False  # Stop the game loop
 
 def update_npc_list():
     global npc_list
