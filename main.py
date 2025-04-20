@@ -114,8 +114,7 @@ class TrashBin:
         screen.blit(bin_img, (self.x * TILE_SIZE, self.y * TILE_SIZE))
 
 def generate_maze():
-    global tile_map, bins
-    bins = []  # List to store trash bins
+    global tile_map
     try:
         with open("maze.txt", "r") as file:
             lines = file.readlines()
@@ -125,15 +124,12 @@ def generate_maze():
                 for j, char in enumerate(line.strip().split()):
                     if char == 'c':  # 'c' represents a sidewalk
                         tile_map[i][j] = 'sidewalk'
-                    elif char == 'w':  # 'w' represents grass
+                    elif char in ['w', 'u']:  # 'w' and 'u' represent grass
                         tile_map[i][j] = 'grass'
-                    elif char == 'u':  # 'u' represents a trash bin
-                        tile_map[i][j] = 'trash_bin'
-                        bins.append(TrashBin(j, i))  # Add the trash bin to the list
     except FileNotFoundError:
         print("Error: maze.txt not found. Please ensure the file exists in the same directory.")
         sys.exit(1)
-
+        
 generate_maze()
 
 def place_houses():
