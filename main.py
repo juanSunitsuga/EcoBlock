@@ -368,12 +368,12 @@ class NPC:
                 
 
                 # Pick up the trash if at the same position
-                for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
+                for trash in trash_list[:]:
                     if self.x == trash.x and self.y == trash.y:
                         if self.current_trash < self.capacity:
                             self.current_trash += 1
                             trash_list.remove(trash)
-                        
+
                         # Check if capacity is full
                         if self.current_trash >= self.capacity:
                             self.returning_to_bin = True
