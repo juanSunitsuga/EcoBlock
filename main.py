@@ -152,9 +152,6 @@ def place_trash_bins():
 # Generate trash bins
 bins = place_trash_bins()
 
-# Generate trash bins
-bins = place_trash_bins()
-
 def draw_tile(x, y):
     tile_type = tile_map[y][x]
     if tile_type == "grass":
