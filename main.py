@@ -18,6 +18,14 @@ BLACK = (0, 0, 0)
 
 ASSETS_PATH = "assets/"
 
+# Load sounds
+dropTrash_sound = pygame.mixer.Sound(ASSETS_PATH + "SFX/Drop Trash.mp3")
+pickupTrash_sound = pygame.mixer.Sound(ASSETS_PATH + "SFX/Pickup Trash.mp3")
+storeTrash_sound = pygame.mixer.Sound(ASSETS_PATH + "SFX/Store Trash.mp3")
+bg_music = pygame.mixer.Sound(ASSETS_PATH + "SFX/Bg Music.mp3")
+bg_music.set_volume(0.3)
+bg_music.play(-1)
+
 # Load images
 grass_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "grass.png"), (TILE_SIZE, TILE_SIZE))
 sidewalk_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "sidewalk.png"), (TILE_SIZE, TILE_SIZE))
@@ -270,12 +278,14 @@ class Bot:
                         if self.current_trash < self.capacity:
                             self.current_trash += 1
                             trash_list.remove(trash)
+                            pickupTrash_sound.play()
 
                 # Check if standing on a trash bin
                 for bin in bins:
                     if self.x == bin.x and self.y == bin.y and self.current_trash > 0:
                         money += self.current_trash  # Earn $1 per trash
                         self.current_trash = 0  # Empty the trash
+                        storeTrash_sound.play()  # Play sound when storing trash
             else:
                 self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
                 self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
@@ -500,6 +510,7 @@ class NPC:
                 # Only add trash if it's not thrown into a bin
                 if not is_bin_tile:
                     trash_list.append(Trash(self.x, self.y))
+                    dropTrash_sound.play()
 
         return True
 
