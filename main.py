@@ -23,7 +23,24 @@ grass_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "grass.png"),
 sidewalk_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "sidewalk.png"), (TILE_SIZE, TILE_SIZE))
 house_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "house.png"), (TILE_SIZE, TILE_SIZE))
 bin_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Trash Bin.png"), (TILE_SIZE, TILE_SIZE))
-bot_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "trash-bot.png"), (TILE_SIZE, TILE_SIZE))
+bot_img = {"walk": {
+            "north": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Playable/North 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Playable/North 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "south": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Playable/South 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Playable/South 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "east": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Playable/East 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Playable/East 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ],
+            "west": [
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Playable/West 1.png"), (TILE_SIZE, TILE_SIZE)),
+                pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Playable/West 2.png"), (TILE_SIZE, TILE_SIZE)),
+            ]
+        }}
 
 trash_images = [
     pygame.transform.scale(pygame.image.load(ASSETS_PATH + "plastic-bottle.png"), (TILE_SIZE, TILE_SIZE)),
@@ -193,7 +210,6 @@ class Bot:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.prev_pos = None
         self.pixel_x = x * TILE_SIZE
         self.pixel_y = y * TILE_SIZE
         self.target_x = self.pixel_x
@@ -203,6 +219,19 @@ class Bot:
         self.capacity = 5  # Maximum trash capacity
         self.current_trash = 0  # Current trash count
 
+        # Animation attributes
+        self.direction = "south"  # Default direction
+        self.anim_frame = 0
+        self.anim_timer = 0
+        self.frame_interval = 6  # Frames before switching animation
+
+        # Initialize the image with the first frame of the default direction
+        self.image = bot_img["walk"][self.direction][self.anim_frame]
+
+    def get_image(self):
+        """Get the current animation frame based on direction and frame index."""
+        return bot_img["walk"][self.direction][self.anim_frame % 2]
+
     def move(self, direction, is_walkable):
         if self.moving:
             return
@@ -210,18 +239,21 @@ class Bot:
         # Determine the next position based on the input direction
         if direction == "up":
             next_x, next_y = self.x, self.y - 1
+            self.direction = "north"
         elif direction == "down":
             next_x, next_y = self.x, self.y + 1
+            self.direction = "south"
         elif direction == "left":
             next_x, next_y = self.x - 1, self.y
+            self.direction = "west"
         elif direction == "right":
             next_x, next_y = self.x + 1, self.y
+            self.direction = "east"
         else:
             return  # Invalid direction
 
         # Check if the next position is walkable
         if is_walkable(next_x, next_y):
-            self.prev_pos = (self.x, self.y)
             self.x, self.y = next_x, next_y
             self.target_x = self.x * TILE_SIZE
             self.target_y = self.y * TILE_SIZE
@@ -232,6 +264,7 @@ class Bot:
         if self.moving:
             dx = self.target_x - self.pixel_x
             dy = self.target_y - self.pixel_y
+
             if abs(dx) <= self.speed and abs(dy) <= self.speed:
                 self.pixel_x = self.target_x
                 self.pixel_y = self.target_y
@@ -253,8 +286,15 @@ class Bot:
                 self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
                 self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
 
+        # Update animation timer and frame
+        self.anim_timer += 1
+        if self.anim_timer >= self.frame_interval:
+            self.anim_frame = (self.anim_frame + 1) % 2
+            self.image = self.get_image()
+            self.anim_timer = 0
+
     def draw(self):
-        screen.blit(bot_img, (self.pixel_x, self.pixel_y))
+        screen.blit(self.image, (self.pixel_x, self.pixel_y))
 
 class NPC:
     def __init__(self, x, y, npc_type):
@@ -585,13 +625,13 @@ def check_game_completion():
 while running:
     # Handle player input for the bot
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_w]:
+    if keys[pygame.K_w] or keys[pygame.K_UP]:
         player_bot.move("up", is_walkable)
-    elif keys[pygame.K_s]:
+    elif keys[pygame.K_s] or keys[pygame.K_DOWN]:
         player_bot.move("down", is_walkable)
-    elif keys[pygame.K_a]:
+    elif keys[pygame.K_a] or keys[pygame.K_LEFT]:
         player_bot.move("left", is_walkable)
-    elif keys[pygame.K_d]:
+    elif keys[pygame.K_d] or keys[pygame.K_RIGHT]:
         player_bot.move("right", is_walkable)
     screen.fill(WHITE)
 
