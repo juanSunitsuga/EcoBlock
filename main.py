@@ -525,7 +525,7 @@ class NPC:
             text_rect = text_surface.get_rect(center=(self.pixel_x + TILE_SIZE // 2, self.pixel_y - 10))
 
 # Game state
-money = 20  # Initialize money to 20
+money = 20000  # Initialize money to 20
 capacity_upgrade_cost = 10  # Cost to upgrade capacity
 speed_upgrade_cost = 15    # Cost to upgrade speed
 trashes = []
@@ -800,19 +800,17 @@ while running:
                     # Check if the NPC is already "educated" and at max level
                     if npc["type"] == "educated" and npc["level"] >= 10:
                         continue  # Skip further processing for this NPC
-                if npc["upgrade_button"] and npc["upgrade_button"].collidepoint(mouse_pos):
                     if money >= 20:  # Check if the player has enough money
                         money -= 20  # Deduct the upgrade cost
                         npc["level"] += 1  # Increase the NPC's level
+
                         # Upgrade the NPC type if applicable
                         if npc["type"] == "non-educated" and npc["level"] >= 10:
                             npc["type"] = "normal"
-                            npc["level"] = 0  
-                            menu_open = not menu_open
+                            npc["level"] = 0
                         elif npc["type"] == "normal" and npc["level"] >= 10:
                             npc["type"] = "educated"
                             npc["level"] = 10
-                            menu_open = not menu_open
 
                         # Synchronize the level and type with the corresponding NPC in the npcs list
                         for actual_npc in npcs:
@@ -820,6 +818,8 @@ while running:
                                actual_npc.y == int(npc["location"].strip("()").split(", ")[1]):
                                 actual_npc.level = npc["level"]
                                 actual_npc.npc_type = npc["type"]
+                                if npc["type"] == "educated":
+                                    actual_npc.capacity = 3  # Set capacity for educated NPCs
                                 break
 
     # Draw the game world
