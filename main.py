@@ -131,6 +131,30 @@ def place_houses():
 
 place_houses()
 
+def place_trash_bins():
+    bins = []
+    for _ in range(3):  # Generate 3 random trash bins
+        while True:
+            x, y = random.randint(0, COLS - 1), random.randint(0, ROWS - 1)
+            if tile_map[y][x] == "grass":
+                # Ensure the trash bin is adjacent to a sidewalk
+                for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < COLS and 0 <= ny < ROWS and tile_map[ny][nx] == "sidewalk":
+                        bins.append(TrashBin(x, y))
+                        tile_map[y][x] = "trash_bin"  # Mark the tile as a trash bin
+                        break
+                else:
+                    continue  # Retry if no adjacent sidewalk is found
+                break
+    return bins
+
+# Generate trash bins
+bins = place_trash_bins()
+
+# Generate trash bins
+bins = place_trash_bins()
+
 def draw_tile(x, y):
     tile_type = tile_map[y][x]
     if tile_type == "grass":
@@ -140,6 +164,9 @@ def draw_tile(x, y):
     elif tile_type == "house":
         screen.blit(grass_img, (x * TILE_SIZE, y * TILE_SIZE))
         screen.blit(house_img, (x * TILE_SIZE, y * TILE_SIZE))
+    elif tile_type == "trash_bin":
+        screen.blit(grass_img, (x * TILE_SIZE, y * TILE_SIZE))
+        screen.blit(bin_img, (x * TILE_SIZE, y * TILE_SIZE))
 
 class Trash:
     def __init__(self, x, y):
@@ -161,6 +188,8 @@ class Bot:
         self.target_y = self.pixel_y
         self.speed = 4
         self.moving = False
+        self.capacity = 5  # Maximum trash capacity
+        self.current_trash = 0  # Current trash count
 
     def move(self, direction, is_walkable):
         if self.moving:
@@ -186,7 +215,8 @@ class Bot:
             self.target_y = self.y * TILE_SIZE
             self.moving = True
 
-    def update(self, trash_list):
+    def update(self, trash_list, bins):
+        global money
         if self.moving:
             dx = self.target_x - self.pixel_x
             dy = self.target_y - self.pixel_y
@@ -195,22 +225,35 @@ class Bot:
                 self.pixel_y = self.target_y
                 self.moving = False
 
-                # Check for trash at the current position and remove it
+                # Check for trash at the current position and pick it up
                 for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
                     if self.x == trash.x and self.y == trash.y:
-                        trash_list.remove(trash)
+                        if self.current_trash < self.capacity:
+                            self.current_trash += 1
+                            trash_list.remove(trash)
+
+                # Check if standing on a trash bin
+                for bin in bins:
+                    if self.x == bin.x and self.y == bin.y and self.current_trash > 0:
+                        money += self.current_trash  # Earn $1 per trash
+                        self.current_trash = 0  # Empty the trash
             else:
                 self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
                 self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
 
     def draw(self):
         screen.blit(bot_img, (self.pixel_x, self.pixel_y))
+        # Draw the capacity above the bot
+        font = pygame.font.SysFont(None, 24)
+        capacity_text = f"{self.current_trash}/{self.capacity}"
+        text_surface = font.render(capacity_text, True, (255, 255, 255))
+        text_rect = text_surface.get_rect(center=(self.pixel_x + TILE_SIZE // 2, self.pixel_y - 10))
+        screen.blit(text_surface, text_rect)
 
 class NPC:
     def __init__(self, x, y, npc_type):
         self.x, self.y = x, y
         self.npc_type = npc_type
-        self.image = npc_imgs[npc_type]
         self.pixel_x = x * TILE_SIZE
         self.pixel_y = y * TILE_SIZE
         self.target_x = self.pixel_x
@@ -218,13 +261,16 @@ class NPC:
         self.speed = 4
         self.prev_pos = None
         self.moving = False
-        self.npc_type = npc_type
-        self.direction = "south"
-
+        self.direction = "south"  # Default direction
         self.anim_frame = 0
         self.anim_timer = 0
         self.frame_interval = 6
-        self.image = self.get_image()
+        self.capacity = 3 if npc_type == "educated" else 0  # Educated NPCs have a capacity
+        self.current_trash = 0  # Current trash count
+        self.returning_to_bin = False  # Whether the NPC is returning to a trash bin
+        
+        # Initialize the image with the first frame of the default direction
+        self.image = npc_imgs[npc_type]["walk"][self.direction][self.anim_frame]
 
     def get_image(self):
         if self.npc_type == "normal":
@@ -257,13 +303,40 @@ class NPC:
 
         return None  # No path found
 
-    def move(self, trash_list):
+    def move(self, trash_list, bins):
         if self.moving:
             return
 
         def is_walkable(x, y):
-            return (0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] == "sidewalk")
+            return 0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] in ["sidewalk", "trash_bin"]
 
+        # If returning to a trash bin
+        if self.returning_to_bin:
+            nearest_bin = None
+            shortest_path = None
+            for bin in bins:
+                path = self.bfs((self.x, self.y), (bin.x, bin.y), is_walkable)
+                if path and (shortest_path is None or len(path) < len(shortest_path)):
+                    nearest_bin = bin
+                    shortest_path = path
+
+            if shortest_path:
+                next_x, next_y = shortest_path[0]
+                self.prev_pos = (self.x, self.y)
+                self.x, self.y = next_x, next_y
+
+                # Check if the NPC has reached the trash bin
+                if self.x == nearest_bin.x and self.y == nearest_bin.y:
+                    global money
+                    money += self.current_trash  # Earn $1 per trash
+                    self.current_trash = 0  # Empty the trash
+                    self.returning_to_bin = False  # Resume collecting trash
+
+                self.target_x = self.x * TILE_SIZE
+                self.target_y = self.y * TILE_SIZE
+                self.moving = True
+                return
+        
         # If the NPC is educated, use BFS to find the nearest trash
         if self.npc_type == "educated" and trash_list:
             nearest_trash = None
@@ -291,27 +364,31 @@ class NPC:
 
                 self.prev_pos = (self.x, self.y)
                 self.x, self.y = next_x, next_y
+                
+                
 
                 # Pick up the trash if at the same position
                 for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
                     if self.x == trash.x and self.y == trash.y:
-                        trash_list.remove(trash)
+                        if self.current_trash < self.capacity:
+                            self.current_trash += 1
+                            trash_list.remove(trash)
+                        
+                        # Check if capacity is full
+                        if self.current_trash >= self.capacity:
+                            self.returning_to_bin = True
 
                 self.target_x = self.x * TILE_SIZE
                 self.target_y = self.y * TILE_SIZE
                 self.moving = True
                 return
 
+        # Random movement if no trash is found
         neighbors = []
         for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
             nx, ny = self.x + dx, self.y + dy
             if is_walkable(nx, ny):
                 neighbors.append((nx, ny))
-
-        # If no valid neighbors except the previous position, allow backtracking
-        if not neighbors or (len(neighbors) == 1 and neighbors[0] == self.prev_pos):
-            if self.prev_pos:
-                neighbors.append(self.prev_pos)
 
         if neighbors:
             self.prev_pos = (self.x, self.y)
@@ -337,7 +414,13 @@ class NPC:
             if self.npc_type == "educated":
                 for trash in trash_list[:]:  # Use a copy of the list to avoid modification issues
                     if self.x == trash.x and self.y == trash.y:
-                        trash_list.remove(trash)
+                        if self.current_trash < self.capacity:
+                            self.current_trash += 1
+                            trash_list.remove(trash)
+
+                        # Check if capacity is full
+                        if self.current_trash >= self.capacity:
+                            self.returning_to_bin = True
 
     def update(self, trash_list):
         if self.moving:
@@ -374,8 +457,15 @@ class NPC:
 
     def draw(self):
         screen.blit(self.image, (self.pixel_x, self.pixel_y))
+        # Draw the capacity above the NPC
+        if self.npc_type == "educated":
+            font = pygame.font.SysFont(None, 24)
+            capacity_text = f"{self.current_trash}/{self.capacity}"
+            text_surface = font.render(capacity_text, True, (255, 255, 255))
+            text_rect = text_surface.get_rect(center=(self.pixel_x + TILE_SIZE // 2, self.pixel_y - 10))
 
 # Game state
+money = 0  # Initialize money to 0
 trashes = []
 bots = [Bot(1, 1)]
 npcs = []
@@ -409,7 +499,19 @@ running = True
 player_bot = Bot(1, 1)  # Initialize the player-controlled bot
 
 def is_walkable(x, y):
-    return 0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] == "sidewalk"
+    return 0 <= x < COLS and 0 <= y < ROWS and tile_map[y][x] in ["sidewalk", "trash_bin"]
+
+def display_stats(money, bot_capacity, bot_current_trash):
+    font = pygame.font.SysFont(None, 36)  # Font size 36
+    # Display money
+    money_text = f"Money: ${money}"
+    money_surface = font.render(money_text, True, (0, 0, 0))  # Black text
+    screen.blit(money_surface, (10, 10))  # Top-left corner
+
+    # Display bot capacity
+    capacity_text = f"Bot Capacity: {bot_current_trash}/{bot_capacity}"
+    capacity_surface = font.render(capacity_text, True, (0, 0, 0))  # Black text
+    screen.blit(capacity_surface, (10, 50))  # Below the money text
 
 while running:
     screen.fill(WHITE)
@@ -431,26 +533,33 @@ while running:
 
     # Update and draw NPCs
     for npc in npcs:
-        npc.move(trashes)
+        npc.move(trashes, bins)
         npc.update(trashes)
 
     # Update and draw the player-controlled bot
-    player_bot.update(trashes)
+    player_bot.update(trashes, bins)
 
     # Draw the game world
     for y in range(ROWS):
         for x in range(COLS):
             draw_tile(x, y)
 
+    # Draw trash bins
+    for trash_bin in bins:
+        trash_bin.draw()
+
+    # Draw other game objects
     for trash in trashes:
         trash.draw()
     player_bot.draw()
     for npc in npcs:
         npc.draw()
 
+    # Display money and bot capacity
+    display_stats(money, player_bot.capacity, player_bot.current_trash)
+
     pygame.display.flip()
     clock.tick(30)
 
 pygame.quit()
 sys.exit()
-# End of the code
