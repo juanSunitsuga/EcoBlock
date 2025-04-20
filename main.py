@@ -240,12 +240,6 @@ class Bot:
 
     def draw(self):
         screen.blit(bot_img, (self.pixel_x, self.pixel_y))
-        # Draw the capacity above the bot
-        font = pygame.font.SysFont(None, 24)
-        capacity_text = f"{self.current_trash}/{self.capacity}"
-        text_surface = font.render(capacity_text, True, (255, 255, 255))
-        text_rect = text_surface.get_rect(center=(self.pixel_x + TILE_SIZE // 2, self.pixel_y - 10))
-        screen.blit(text_surface, text_rect)
 
 class NPC:
     def __init__(self, x, y, npc_type):
