@@ -608,7 +608,7 @@ def draw_menu():
         upgrade_button_rect = pygame.Rect(menu_bg_rect.x + menu_width - 170, y_offset, 150, 40)
         pygame.draw.rect(screen, (100, 200, 100), upgrade_button_rect)  # Green button
 
-        upgrade_text = font.render("Educate", True, (0, 0, 0))  # Black text
+        upgrade_text = font.render("Educate $10", True, (0, 0, 0))  # Black text
         text_rect = upgrade_text.get_rect(center=upgrade_button_rect.center)
 
         screen.blit(upgrade_text, text_rect)
@@ -790,8 +790,8 @@ while running:
                     # Check if the NPC is already "educated" and at max level
                     if npc["type"] == "educated" and npc["level"] >= 10:
                         continue  # Skip further processing for this NPC
-                    if money >= 20:  # Check if the player has enough money
-                        money -= 20  # Deduct the upgrade cost
+                    if money >= 10:  # Check if the player has enough money
+                        money -= 10  # Deduct the upgrade cost
                         npc["level"] += 1  # Increase the NPC's level
 
                         # Upgrade the NPC type if applicable
