@@ -557,7 +557,7 @@ def generate_npc(npc_type):
             return npc
 
 
-for _ in range(2):
+for _ in range(1):
     npcs.append(generate_npc("non-educated"))
 
 for _ in range(2):
