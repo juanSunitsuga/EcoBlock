@@ -19,6 +19,9 @@ BLACK = (0, 0, 0)
 
 ASSETS_PATH = "assets/"
 
+MAXCAPACITY = 20
+MAXSPEED = 8
+
 # Load sounds
 dropTrash_sound = pygame.mixer.Sound(ASSETS_PATH + "SFX/Drop Trash.mp3")
 pickupTrash_sound = pygame.mixer.Sound(ASSETS_PATH + "SFX/Pickup Trash.mp3")
@@ -146,6 +149,8 @@ def generate_maze():
                         tile_map[i][j] = 'sidewalk'
                     elif char in ['w', 'u']:  # 'w' and 'u' represent grass
                         tile_map[i][j] = 'grass'
+                    elif char == 't':  # 't' represents a trash bin
+                        tile_map[i][j] = 'trash_bin'
     except FileNotFoundError:
         print("Error: maze.txt not found. Please ensure the file exists in the same directory.")
         sys.exit(1)
@@ -168,20 +173,10 @@ place_houses()
 
 def place_trash_bins():
     bins = []
-    for _ in range(3):  # Generate 3 random trash bins
-        while True:
-            x, y = random.randint(0, COLS - 1), random.randint(0, ROWS - 1)
-            if tile_map[y][x] == "grass":
-                # Ensure the trash bin is adjacent to a sidewalk
-                for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-                    nx, ny = x + dx, y + dy
-                    if 0 <= nx < COLS and 0 <= ny < ROWS and tile_map[ny][nx] == "sidewalk":
-                        bins.append(TrashBin(x, y))
-                        tile_map[y][x] = "trash_bin"  # Mark the tile as a trash bin
-                        break
-                else:
-                    continue  # Retry if no adjacent sidewalk is found
-                break
+    for y in range(ROWS):
+        for x in range(COLS):
+            if tile_map[y][x] == "trash_bin":  # Check if the tile is marked as a trash bin
+                bins.append(TrashBin(x, y))
     return bins
 
 # Generate trash bins
@@ -252,8 +247,6 @@ class Bot:
         elif direction == "right":
             next_x, next_y = self.x + 1, self.y
             self.direction = "east"
-        else:
-            return  # Invalid direction
 
         # Check if the next position is walkable
         if is_walkable(next_x, next_y):
@@ -373,6 +366,20 @@ class NPC:
 
             if shortest_path:
                 next_x, next_y = shortest_path[0]
+
+                # Calculate direction before updating position
+                dx = next_x - self.x
+                dy = next_y - self.y
+                if dx == 1:
+                    self.direction = "east"
+                elif dx == -1:
+                    self.direction = "west"
+                elif dy == 1:
+                    self.direction = "south"
+                elif dy == -1:
+                    self.direction = "north"
+
+                # Update position
                 self.prev_pos = (self.x, self.y)
                 self.x, self.y = next_x, next_y
 
@@ -382,6 +389,10 @@ class NPC:
                     money += self.current_trash  # Earn $1 per trash
                     self.current_trash = 0  # Empty the trash
                     self.returning_to_bin = False  # Resume collecting trash
+
+                    # Reset animation to idle frame
+                    self.anim_frame = 0
+                    self.image = self.get_image()
 
                 self.target_x = self.x * TILE_SIZE
                 self.target_y = self.y * TILE_SIZE
@@ -485,16 +496,12 @@ class NPC:
                 self.pixel_x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
                 self.pixel_y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
 
-                if self.npc_type in ["normal", "educated", "non-educated"]:
-                    self.anim_timer += 1
-                    if self.anim_timer >= self.frame_interval:
-                        self.anim_frame = (self.anim_frame + 1) % 2
-                        self.image = self.get_image()
-                        self.anim_timer = 0
-
-        elif self.npc_type in ["normal", "educated", "non-educated"]:
+        # Update animation timer and frame
+        self.anim_timer += 1
+        if self.anim_timer >= self.frame_interval:
+            self.anim_frame = (self.anim_frame + 1) % 2
             self.image = self.get_image()
-
+            self.anim_timer = 0
 
          # Throw trash based on type
         if random.random() < 0.02:
@@ -525,7 +532,7 @@ class NPC:
             text_rect = text_surface.get_rect(center=(self.pixel_x + TILE_SIZE // 2, self.pixel_y - 10))
 
 # Game state
-money = 20000  # Initialize money to 20
+money = 20 # Initialize money to 20
 capacity_upgrade_cost = 10  # Cost to upgrade capacity
 speed_upgrade_cost = 15    # Cost to upgrade speed
 trashes = []
@@ -550,7 +557,7 @@ def generate_npc(npc_type):
             return npc
 
 
-for _ in range(1):
+for _ in range(2):
     npcs.append(generate_npc("non-educated"))
 
 for _ in range(2):
@@ -600,8 +607,12 @@ def draw_menu():
         # Draw upgrade button
         upgrade_button_rect = pygame.Rect(menu_bg_rect.x + menu_width - 170, y_offset, 150, 40)
         pygame.draw.rect(screen, (100, 200, 100), upgrade_button_rect)  # Green button
-        upgrade_text = font.render("Upgrade", True, (0, 0, 0))  # Black text
-        screen.blit(upgrade_text, (upgrade_button_rect.x + 20, upgrade_button_rect.y + 10))
+
+        upgrade_text = font.render("Educate", True, (0, 0, 0))  # Black text
+        text_rect = upgrade_text.get_rect(center=upgrade_button_rect.center)
+
+        screen.blit(upgrade_text, text_rect)
+
 
         # Update the button rect in the NPC dictionary
         npc["upgrade_button"] = upgrade_button_rect
@@ -655,50 +666,7 @@ def display_stats(money, bot_capacity, bot_current_trash, start_time, trash_coun
     
 # Load the star image
 star_img = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "star.png"), (50, 50))
-
-def check_game_completion():
-    global running
-    if not trashes and all(npc["type"] == "educated" for npc in npc_list):
-        # Calculate elapsed time
-        elapsed_time = time.time() - start_time
-        minutes = int(elapsed_time // 60)
-        seconds = int(elapsed_time % 60)
-
-        # Determine star rating based on time
-        if elapsed_time <= 7 * 60:  # Less than or equal to 7 minutes
-            stars = 5
-        elif elapsed_time <= 10 * 60:  # Less than or equal to 10 minutes
-            stars = 4
-        elif elapsed_time <= 15 * 60:  # Less than or equal to 15 minutes
-            stars = 3
-        elif elapsed_time <= 20 * 60:  # Less than or equal to 20 minutes
-            stars = 2
-        else:
-            stars = 1
-
-        # Display the completion screen
-        font = pygame.font.SysFont(None, 48)
-        win_text = font.render("Congratulations! All NPCs are educated!", True, (0, 255, 0))  # Green text
-        time_text = font.render(f"Time: {minutes}m {seconds}s", True, (255, 255, 255))  # White text
-
-        # Draw the texts on the screen
-        screen.fill(BLACK)
-        screen.blit(win_text, (WIDTH // 2 - 300, HEIGHT // 2 - 100))
-        screen.blit(time_text, (WIDTH // 2 - 100, HEIGHT // 2 - 40))
-
-        # Draw stars based on the rating
-        for i in range(5):
-            if i < stars:
-                screen.blit(star_img, (WIDTH // 2 - 125 + i * 60, HEIGHT // 2 + 20))  # Filled star
-            else:
-                # Draw an empty star (optional: use a different image or dim the star)
-                empty_star = pygame.Surface((50, 50), pygame.SRCALPHA)
-                pygame.draw.circle(empty_star, (100, 100, 100, 100), (25, 25), 25)  # Gray circle
-                screen.blit(empty_star, (WIDTH // 2 - 125 + i * 60, HEIGHT // 2 + 20))
-
-        pygame.display.flip()
-        pygame.time.wait(5000)  # Wait for 5 seconds
-        running = False  # Stop the game loop
+empty_star = pygame.transform.scale(pygame.image.load(ASSETS_PATH + "Grayscale Star.png"), (50, 50))
 
 # Start time of the game
 start_time = time.time()
@@ -742,10 +710,32 @@ def check_game_completion():
             if i < stars:
                 screen.blit(star_img, (WIDTH // 2 - 125 + i * 60, HEIGHT // 2 + 20))  # Filled star
             else:
-                # Draw an empty star (optional: use a different image or dim the star)
-                empty_star = pygame.Surface((50, 50), pygame.SRCALPHA)
-                pygame.draw.circle(empty_star, (100, 100, 100, 100), (25, 25), 25)  # Gray circle
                 screen.blit(empty_star, (WIDTH // 2 - 125 + i * 60, HEIGHT // 2 + 20))
+
+        pygame.display.flip()
+        pygame.time.wait(5000)  # Wait for 5 seconds
+        running = False  # Stop the game loop
+
+    elif len(trashes) >= 100:
+        elapsed_time = time.time() - start_time
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
+
+        # Create a semi-transparent overlay
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)  # Allow transparency
+        overlay.fill((0, 0, 0, 150))  # RGBA: Black with 150 alpha (transparency)
+        screen.blit(overlay, (0, 0))
+
+        # Display the completion screen
+        font = pygame.font.SysFont(None, 48)
+        win_text = font.render("Game Over, The Town is VERY POLUTED!", True, (0, 255, 0))  # Green text
+        time_text = font.render(f"Time: {minutes}m {seconds}s", True, (255, 255, 255))  # White text
+
+        screen.blit(win_text, (WIDTH // 2 - 300, HEIGHT // 2 - 100))
+        screen.blit(time_text, (WIDTH // 2 - 100, HEIGHT // 2 - 40))
+
+        for i in range(5):
+            screen.blit(empty_star, (WIDTH // 2 - 125 + i * 60, HEIGHT // 2 + 20))
 
         pygame.display.flip()
         pygame.time.wait(5000)  # Wait for 5 seconds
@@ -786,11 +776,11 @@ while running:
             if event.key == pygame.K_TAB:  # Toggle the menu with the Tab key
                 menu_open = not menu_open
             elif event.key == pygame.K_1:  # Upgrade capacity
-                if money >= capacity_upgrade_cost:
+                if money >= capacity_upgrade_cost and player_bot.capacity < MAXCAPACITY:
                     money -= capacity_upgrade_cost
                     player_bot.capacity += 1  # Increase bot capacity
             elif event.key == pygame.K_2:  # Upgrade speed
-                if money >= speed_upgrade_cost:
+                if money >= speed_upgrade_cost and player_bot.speed < MAXSPEED:
                     money -= speed_upgrade_cost
                     player_bot.speed += 1  # Increase bot speed
         elif event.type == pygame.MOUSEBUTTONDOWN and menu_open:
